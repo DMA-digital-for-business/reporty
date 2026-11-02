@@ -1,6 +1,11 @@
-import { build } from 'vite';
-import tailwind from '@tailwindcss/vite';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { fileURLToPath } from 'node:url';
+// Resolve from the app owning these build dependencies, including installs
+// scoped to the landing workspace on Vercel.
+const landingRequire = createRequire(new URL('../apps/landing/package.json', import.meta.url));
+const { build } = await import(pathToFileURL(landingRequire.resolve('vite')).href);
+const { default: tailwind } = await import(pathToFileURL(landingRequire.resolve('@tailwindcss/vite')).href);
 const root = fileURLToPath(new URL('../apps/extension/', import.meta.url));
 console.log('[landing-demo] Compilazione del pannello locale…');
 await build({
