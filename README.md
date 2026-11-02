@@ -7,6 +7,12 @@ Monorepo npm workspaces per segnalare fix su siti e app web.
 - `packages/shared`: tipi e identificazione delle pagine condivisi.
 - `supabase`: destinazione delle migrazioni database.
 
+## Logo
+
+Il logo usa il pin di segnalazione viola al posto della “o”. Gli SVG sorgente (`reporty-logo.svg`, `reporty-logo-dark.svg` e `reporty-symbol.svg`) sono in `apps/web/public/brand` e `apps/extension/public/brand`. Le lettere sono tracciati vettoriali: non richiedono font esterni. Il componente `packages/shared/ui/brand-logo.tsx`, condiviso da dashboard ed estensione, adatta le lettere al colore del tema e mantiene il pin viola. Il simbolo è usato anche per favicon e icone dell’estensione; i PNG nelle stesse cartelle sono le esportazioni raster.
+
+Dopo le modifiche al logo, ricostruire la dashboard (include il widget) e l’estensione, quindi ricaricarla nel browser. Lo ZIP di distribuzione si aggiorna con `npm run zip:extension:production`.
+
 ## Sviluppo
 
 Usare Node.js 22.12 o successivo. Dalla root:

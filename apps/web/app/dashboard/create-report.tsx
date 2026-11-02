@@ -26,7 +26,7 @@ type Draft = { id: string; environmentId: string; url: string; body: string; pri
 export function CreateReport({ environments, disabled, onCreated }: { environments: Environment[]; disabled?: boolean; onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   return <>
-    <TooltipButton label="Nuova segnalazione" variant="default" className="rounded-full" disabled={disabled || !environments.length} onClick={() => setOpen(true)}><Plus aria-hidden="true" /></TooltipButton>
+    <TooltipButton label="Nuova segnalazione" variant="default" className="size-10 rounded-full" disabled={disabled || !environments.length} onClick={() => setOpen(true)}><Plus aria-hidden="true" /></TooltipButton>
     {open && environments.length ? <CreateReportForm environments={environments} onCreated={onCreated} onClose={() => setOpen(false)} /> : null}
   </>;
 }
