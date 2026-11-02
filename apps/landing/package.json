@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start --port 3001",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prebuild": "node ../../scripts/build-landing-demo.mjs",
+    "predev": "node ../../scripts/build-landing-demo.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

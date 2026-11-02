@@ -88,7 +88,7 @@ function ExpandingPin({ children, anchorX, anchorY, ...props }: React.ButtonHTML
 type DraftScreenshot = ScreenshotImage & { id: string };
 type Draft = { id: string; context: ReportContext; screenshots: DraftScreenshot[]; files: DraftReportFile[]; body: string; priority: ReportPriority; saved?: boolean; uploaded?: string[] };
 
-export function ReviewOverlay({ site, environment, host, transport, logoUrl, onPositionChange, onHiddenChange, captureScreenshot: captureOverride, requestedReport, onOpenReport, reportsRevision }: { site: Site; environment: Environment; host: HTMLElement; onPositionChange: (position: Site['position']) => Promise<void>; onHiddenChange: (hidden: boolean) => Promise<void>; transport?: (body: Record<string, unknown>) => Promise<unknown>; logoUrl?: string; captureScreenshot?: () => Promise<string>; requestedReport?: { id: string; requestId: string; focusOnly?: boolean }; onOpenReport?: (id: string) => boolean; reportsRevision?: number }) {
+export function ReviewOverlay({ site, environment, host, transport, logoUrl, onPositionChange, onHiddenChange, captureScreenshot: captureOverride, requestedReport, onOpenReport, reportsRevision, mediaEnabled = true, openCreatedReport = false, creationRequest, onSelectionChange }: { site: Site; environment: Environment; host: HTMLElement; onPositionChange: (position: Site['position']) => Promise<void>; onHiddenChange: (hidden: boolean) => Promise<void>; transport?: (body: Record<string, unknown>) => Promise<unknown>; logoUrl?: string; captureScreenshot?: () => Promise<string>; requestedReport?: { id: string; requestId: string; focusOnly?: boolean }; onOpenReport?: (id: string) => boolean; reportsRevision?: number; mediaEnabled?: boolean; openCreatedReport?: boolean; creationRequest?: string; onSelectionChange?: (active: boolean) => void }) {
   useEffect(() => () => stopTabCapture(), [environment.id, captureOverride]);
   const rawMessage = async (body: Record<string, unknown>) => (transport ? await transport(body) : await extensionMessage(body)) as Awaited<ReturnType<typeof extensionMessage>>;
   const { ensureIdentity, nameDialog, nameDialogOpen } = useReviewerIdentity(rawMessage, environment.id);
@@ -102,6 +102,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
   const [reports, setReports] = useState<ReportPin[]>([]);
   const [open, setOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  useEffect(() => { if (creationRequest) { setOpen(true); setModalOpen(false); } }, [creationRequest]);
   const modal = useRef<HTMLDialogElement>(null);
   const [order, setOrder] = useState<ReportSort>({ field: 'status', direction: 'asc' });
   const [searchInput, setSearch] = useState('');
@@ -402,6 +403,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     window.visualViewport?.addEventListener('scroll', onMove);
     return () => { clearInterval(timer); window.removeEventListener('scroll', onMove); window.removeEventListener('resize', onMove); window.visualViewport?.removeEventListener('resize', onMove); window.visualViewport?.removeEventListener('scroll', onMove); };
   }, []);
+  useEffect(() => { onSelectionChange?.(!!mode); return () => onSelectionChange?.(false); }, [mode, onSelectionChange]);
   useEffect(() => {
     if (!mode) return;
     const inside = (event: Event) => event.composedPath().includes(host);
@@ -418,7 +420,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
       const anchor: Anchor = mode === 'pin' ? { kind: 'pin', documentX: event.clientX + scrollX, documentY: event.clientY + scrollY } : elementAnchor(element, event.clientX, event.clientY);
       const context: ReportContext = { ...getPageContext(location.href), anchor, viewport: { width: innerWidth, height: innerHeight, devicePixelRatio }, scroll: { x: Math.max(0, scrollX), y: Math.max(0, scrollY) } };
       setMode(null); setHover(null); setSelected(null); setDraft({ id: crypto.randomUUID(), context, screenshots: [], files: [], body: '', priority: 'medium' }); setOpen(true);
-      void run(async () => {
+      if (mediaEnabled) void run(async () => {
         const screenshot = await captureScreenshot(context);
         if ((screenshot.split(',')[1]?.length ?? 0) * 3 / 4 > 2500000) throw new Error('Screenshot troppo grande. Puoi inviare il commento senza immagine.');
         setDraft(previous => previous ? { ...previous, screenshots: [{ id: crypto.randomUUID(), src: screenshot, width: context.viewport.width, height: context.viewport.height }] } : previous);
@@ -429,7 +431,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     document.addEventListener('pointerdown', preventActivation, true); document.addEventListener('mousedown', preventActivation, true);
     document.addEventListener('mousemove', move, true); document.addEventListener('click', click, true); document.addEventListener('keydown', escape, true);
     return () => { document.removeEventListener('pointerdown', preventActivation, true); document.removeEventListener('mousedown', preventActivation, true); document.removeEventListener('mousemove', move, true); document.removeEventListener('click', click, true); document.removeEventListener('keydown', escape, true); };
-  }, [mode, host]);
+  }, [mode, host, mediaEnabled]);
   useEffect(() => {
     if (modalOpen && !modal.current?.open) modal.current?.showModal();
     if (!modalOpen && modal.current?.open) modal.current?.close();
@@ -512,7 +514,13 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
             setDraft(previous => previous ? { ...previous, files: previous.files.map(file => file.id === item.id ? { ...file, uploaded: true } : file) } : previous);
           }
           setDraft(null); setStatus('Segnalazione inviata.', 'success');
-          try { await refresh(); } catch { setStatus('Segnalazione inviata; aggiornamento della lista non riuscito.'); }
+          try {
+            await refresh();
+            if (openCreatedReport) {
+              const listing = await fetchPage({ id: draft.id, pagePath: page.pagePath, limit: 1 });
+              if (listing.reports[0]) { setSelected(listing.reports[0]); setComments([]); setReportFiles([]); setOpen(false); setModalOpen(true); }
+            }
+          } catch { setStatus('Segnalazione inviata; aggiornamento della lista non riuscito.'); }
         } catch (error) {
           if (saved) throw new Error(`Segnalazione salvata, invio allegati interrotto. Premi Completa invio per riprovare. ${error instanceof Error ? error.message : ''}`);
           throw error;
@@ -525,8 +533,8 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
           <ScreenshotGallery src={screenshot.src} sources={draft.screenshots.map(item => item.src)} aspectRatio={`${screenshot.width} / ${screenshot.height}`} />
           <TooltipButton type="button" label={`Rimuovi screenshot ${index + 1}`} disabled={busy || draft.saved} className="absolute right-2 top-2 z-10 bg-background text-destructive shadow-md hover:text-destructive" onClick={() => setDraft(previous => previous ? { ...previous, screenshots: previous.screenshots.filter(item => item.id !== screenshot.id) } : previous)}><Trash2 className="size-4" aria-hidden="true" /></TooltipButton>
         </div>)}
-        {!capturing && !draft.screenshots.length ? <p className="text-xs text-muted-foreground">Nessuno screenshot allegato.</p> : null}
-        <Button type="button" variant="outline" disabled={busy || draft.saved || draft.screenshots.length >= MAX_REPORT_SCREENSHOTS} onClick={() => void run(async () => {
+        {!capturing && !draft.screenshots.length ? <p className="text-xs text-muted-foreground">{mediaEnabled ? 'Nessuno screenshot allegato.' : 'Screenshot e allegati non sono disponibili nella demo locale.'}</p> : null}
+        <Button type="button" variant="outline" disabled={!mediaEnabled || busy || draft.saved || draft.screenshots.length >= MAX_REPORT_SCREENSHOTS} onClick={() => void run(async () => {
           if (location.href !== draft.context.url) throw new Error('Torna alla pagina originale prima di aggiungere uno screenshot.');
           const width = innerWidth, height = innerHeight;
           setCapturing(true);
@@ -536,7 +544,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
             setScreenshotCapture({ src, width, height });
           } finally { setCapturing(false); }
         })}><Plus className="size-4" aria-hidden="true" />Aggiungi screenshot ({draft.screenshots.length}/{MAX_REPORT_SCREENSHOTS})</Button>
-        <ReportAttachmentPicker files={draft.files} disabled={busy} saved={draft.saved} progress={fileProgress} onError={text => setStatus(text, 'error')} onChange={files => setDraft(previous => previous ? { ...previous, files } : previous)} onRemove={id => {
+        <ReportAttachmentPicker files={draft.files} disabled={!mediaEnabled || busy} saved={draft.saved} progress={fileProgress} onError={text => setStatus(text, 'error')} onChange={files => setDraft(previous => previous ? { ...previous, files } : previous)} onRemove={id => {
           void run(async () => {
             if (draft.saved || pendingFiles.current.has(id)) await message({ type: 'REPORTY_ATTACHMENT', payload: { scope: 'report', operation: 'remove', id, issueId: draft.id } });
             pendingFiles.current.delete(id);
@@ -589,7 +597,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
         {selected.canChangeStatus ? <div className="grid gap-2"><Label htmlFor="selected-priority">Priorità</Label><RadioButtons variant="standard" label="Priorità" id="selected-priority" disabled={busy} value={selected.priority ?? 'medium'} onValueChange={value => updateReportField('priority', value)} options={Object.entries(priorityLabels).map(([value, label]) => ({ value, label }))} /></div> : null}
 
         </section></section><section className="space-y-4 rounded-xl border bg-muted/50 dark:bg-card p-4" aria-label="Risposte"><h3 className="font-medium">Risposte</h3>{threadLoading ? <RepliesSkeleton /> : null}{!threadLoading && comments.map(comment => <div key={comment.id} className="rounded-lg border bg-background p-3 dark:bg-muted"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-medium">{comment.authorName}</p><time dateTime={comment.created_at} className="text-xs text-muted-foreground">{formatReportDateTime(comment.created_at)}</time></div><p className="whitespace-pre-wrap break-words">{comment.body}</p><ReplyAttachmentList attachments={comment.attachments} requestFile={input => message({ type:"REPORTY_ATTACHMENT",payload:{ ...input,issueId:selected.id } })} onError={text => setStatus(text,"error")} /></div>)}
-        <ReplyComposer key={selected.id} disabled={busy} onBusyChange={setBusy} requestFile={(input: AttachmentRequest) => message({ type:'REPORTY_ATTACHMENT',payload:{ ...input,issueId:selected.id } })} onError={text => setStatus(text,'error')} submit={async (body,attachments,replyId) => {
+        <ReplyComposer key={selected.id} attachmentsEnabled={mediaEnabled} disabled={busy} onBusyChange={setBusy} requestFile={(input: AttachmentRequest) => message({ type:'REPORTY_ATTACHMENT',payload:{ ...input,issueId:selected.id } })} onError={text => setStatus(text,'error')} submit={async (body,attachments,replyId) => {
           await message({ type:'REPORTY_REPORT',operation:'reply',payload:{ id:selected.id,body,attachments,replyId } });
           setStatus('Risposta inviata.','success');
           try {

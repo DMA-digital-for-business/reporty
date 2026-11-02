@@ -1,0 +1,71 @@
+.section { background: #fdfcfe; border-bottom: 1px solid #f0edf5; }
+.heading { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 70px; }
+.heading > div:last-child > p { color: var(--subtle); font-size: 14px; line-height: 1.9; max-width: 450px; }
+.cta { padding: 0; height: auto; margin-top: 19px; font-size: 12px; gap: 10px; color: var(--purple); }
+.figure { margin-top: 38px; }
+.figure > figcaption { display: flex; justify-content: space-between; align-items: center; gap: 15px; font-size: 8px; letter-spacing: .08em; color: #97899f; margin-bottom: 12px; }
+.figure > figcaption > span { font-size: 10px; letter-spacing: normal; }
+.viewport { overflow-x: auto; border: 1px solid #ded6e9; border-radius: 13px; box-shadow: 0 16px 45px -30px #49325e45; scrollbar-width: thin; overscroll-behavior-x: contain; }
+.viewport:focus-visible { outline: 3px solid #a482ed; outline-offset: 5px; }
+.app { display: grid; grid-template-columns: 165px 1fr; min-width: 820px; min-height: 365px; background: #fff; }
+.sidebar { display: flex; flex-direction: column; background: #f8f6fb; padding: 18px 13px; border-right: 1px solid #eae3f1; }
+.logo { height: 32px; margin-bottom: 23px; }
+.projectSearch { display: flex; align-items: center; gap: 6px; font-size: 8px; color: #9a8ca5; border: 1px solid #e4daed; border-radius: 7px; padding: 9px; margin-bottom: 24px; }
+.sidebarLabel { font-size: 7px; letter-spacing: .12em; color: #aa9db5; margin: 0 8px 10px; }
+.project, .projectActive { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #8b7c97; padding: 10px; border-radius: 6px; }
+.project > span, .projectActive > span { width: 6px; height: 6px; border-radius: 50%; background: #c2b5ce; }
+.projectActive { background: #eee5fd; color: #7449b2; font-weight: 500; }
+.projectActive > span { background: #8750d2; }
+.team { font-size: 8px; color: #b09dbc; margin: auto 7px 0; padding-top: 24px; line-height: 1.7; }
+.workspace { min-width: 0; }
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 19px 20px 15px; gap: 20px; border-bottom: 1px solid #efe9f5; }
+.topbar > span:first-child { display: flex; align-items: center; gap: 20px; }
+.topbar strong { font-size: 11px; font-weight: 600; }
+.topbar > span:first-child > span { font-size: 9px; color: #93839f; }
+.topbar > span:first-child > span:first-of-type { color: #7943b6; }
+.topbar i, .filters i { font-style: normal; font-size: 7px; padding: 2px 4px; background: #f3edfa; border-radius: 4px; margin-left: 4px; }
+.viewBadge { font-size: 8px; color: #967ba9; padding: 5px 8px; border: 1px solid #e5d9f1; border-radius: 5px; }
+.filters { display: flex; align-items: center; gap: 8px; padding: 15px 20px; font-size: 8px; color: #9c89ab; }
+.filters > span { border: 1px solid #e9dff2; border-radius: 6px; padding: 7px 9px; white-space: nowrap; }
+.reportSearch { display: flex; align-items: center; gap: 7px; flex: 1; margin-right: 10px; }
+.board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 10px; padding: 0 20px 20px; }
+.column { background: #fbf9fd; border: 1px solid #eee7f5; border-radius: 8px; padding: 9px; min-height: 243px; }
+.columnTitle { display: flex; align-items: center; gap: 5px; margin-bottom: 12px; }
+.columnTitle > span { width: 5px; height: 5px; border-radius: 50%; background: #d97676; }
+.column[data-status='in_progress'] .columnTitle > span { background: #d4a262; }
+.column[data-status='validation'] .columnTitle > span { background: #7b9cd2; }
+.column[data-status='resolved'] .columnTitle > span { background: #79b79a; }
+.columnTitle strong { font-size: 8px; font-weight: 500; color: #8d799b; }
+.columnTitle i { font-size: 7px; font-style: normal; color: #b09bbb; margin-left: auto; }
+.report { background: #fff; border: 1px solid #e9e0f1; border-radius: 7px; padding: 10px; margin-top: 8px; box-shadow: 0 2px 3px #29103404; }
+.report > p { font-size: 9px; color: #756180; line-height: 1.7; min-height: 31px; }
+.priority { display: inline-flex; align-items: center; gap: 4px; border-radius: 20px; background: #fff1d7; color: #a07a38; font-size: 6px; padding: 3px 5px; margin-top: 8px; }
+.priority[data-priority='Alta'] { background: #ffeded; color: #bc6b6b; }
+.priority[data-priority='Bassa'] { background: #f0edf4; color: #96869f; }
+.reportContext { display: block; font-size: 7px; color: #b09abb; line-height: 1.8; margin-top: 10px; }
+.reportContext > span { display: block; font-family: ui-monospace, monospace; color: #ac97b7; }
+.reportFooter { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid #f4eff8; padding-top: 8px; margin-top: 8px; font-size: 6px; color: #baa8c3; }
+.reportFooter > span:last-child { display: flex; align-items: center; gap: 3px; }
+.benefits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 38px; margin-top: 38px; }
+.benefits article > div { display: flex; align-items: center; gap: 10px; color: #9273b4; margin-bottom: 12px; }
+.benefits h3 { font-size: 14px; font-weight: 600; color: #51405e; }
+.benefits p { font-size: 12px; line-height: 1.9; color: var(--subtle); }
+.closing { display: flex; justify-content: center; align-items: center; gap: 7px; font-size: 10px; line-height: 1.8; color: #ab95b7; margin-top: 32px; text-align: center; }
+.mobileHint { display: none; }
+@media (max-width: 760px) {
+  .heading { grid-template-columns: 1fr; gap: 22px; }
+  .figure { margin-top: 30px; }
+  .benefits { gap: 22px; }
+  .benefits article > div { align-items: flex-start; gap: 8px; }
+  .benefits article > div > svg { flex-shrink: 0; }
+  .benefits h3 { font-size: 12px; line-height: 1.6; }
+  .mobileHint { display: block; font-size: 9px; color: #aa94b7; margin-top: 12px; text-align: center; }
+}
+@media (max-width: 480px) {
+  .figure > figcaption { font-size: 7px; letter-spacing: .04em; }
+  .figure > figcaption > span { font-size: 8px; }
+  .benefits { grid-template-columns: 1fr; gap: 24px; }
+  .benefits h3 { font-size: 14px; }
+  .closing { align-items: flex-start; text-align: left; font-size: 9px; }
+  .closing svg { flex-shrink: 0; margin-top: 2px; }
+}

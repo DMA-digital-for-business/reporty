@@ -1,0 +1,18 @@
+.invitation { display: grid; grid-template-columns: 1.2fr 1fr; gap: 65px; align-items: center; padding: 46px; background: linear-gradient(130deg, #f7f2ff, #fbfaff); border: 1px solid #e5d9fa; border-radius: 20px; position: relative; }
+.invitation::before { display: none; }
+.invitation h2 { font-size: clamp(29px, 3.3vw, 42px); line-height: 1.2; letter-spacing: -.05em; font-weight: 500; margin-top: 14px; }
+.invitationCopy > p { font-size: 14px; line-height: 1.9; color: #73667f; margin-top: 18px; }
+.invitationCopy > button { margin-top: 22px; }
+.invitationCopy small { display: block; font-size: 10px; line-height: 1.9; color: #918399; margin-top: 15px; max-width: 400px; }
+.guide { list-style: none; display: grid; gap: 30px; }
+.guide li { display: flex; align-items: flex-start; gap: 15px; }
+.guide li > span { width: 34px; height: 34px; flex-shrink: 0; background: #fff; border: 1px solid #e8dff5; color: #6938ef; border-radius: 11px; display: grid; place-items: center; font-size: 13px; }
+.guide strong { font-size: 14px; font-weight: 600; }
+.guide p { font-size: 12px; line-height: 1.8; color: #85758f; margin-top: 5px; }
+.reset { margin-top: 16px; }
+.reset > button { font-size: 10px; color: #9b82ac; cursor: pointer; }
+.reset > button:focus-visible { outline: 2px solid #6938ef; outline-offset: 4px; }
+.reset > p { font-size: 11px; color: #8b679e; line-height: 1.8; margin-bottom: 8px; }
+.invitationCopy > .loadError { color: #b53737; font-size: 12px; }
+@media (max-width: 760px) { .invitation { grid-template-columns: 1fr; padding: 30px; gap: 32px; } .guide { gap: 22px; } }
+@media (max-width: 480px) { .invitation { padding: 25px; } .invitation h2 { font-size: 29px; } .invitationCopy > p { font-size: 13px; } }

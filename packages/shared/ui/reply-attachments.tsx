@@ -21,9 +21,9 @@ function encodeFile(file: File): Promise<string> {
   });
 }
 
-export function ReplyComposer({ requestFile, submit, onError, onBusyChange, disabled = false }: {
+export function ReplyComposer({ requestFile, submit, onError, onBusyChange, disabled = false, attachmentsEnabled = true }: {
   requestFile: RequestFile; submit: (body: string, attachments: string[], replyId: string) => Promise<void>;
-  onError: (message: string) => void; onBusyChange?: (busy: boolean) => void; disabled?: boolean;
+  onError: (message: string) => void; onBusyChange?: (busy: boolean) => void; disabled?: boolean; attachmentsEnabled?: boolean;
 }) {
   const labelId = useId();
   const [body,setBody] = useState('');
@@ -68,7 +68,7 @@ export function ReplyComposer({ requestFile, submit, onError, onBusyChange, disa
   }}>
     <label htmlFor={labelId} className="text-sm font-medium">Aggiungi una risposta</label>
     <Textarea id={labelId} required maxLength={10000} disabled={busy} value={body} onChange={event => setBody(event.target.value)} className="min-h-24 w-full rounded-lg border bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50" />
-    <FilePickerButton disabled={busy || files.length >= MAX_REPLY_ATTACHMENTS} description="Massimo 5 file, fino a 2,5 MB ciascuno. Il testo è obbligatorio." onSelect={chosen => {
+    <FilePickerButton disabled={!attachmentsEnabled || busy || files.length >= MAX_REPLY_ATTACHMENTS} description="Massimo 5 file, fino a 2,5 MB ciascuno. Il testo è obbligatorio." onSelect={chosen => {
       if (files.length + chosen.length > MAX_REPLY_ATTACHMENTS) { onError('Puoi allegare al massimo 5 file per risposta.'); return; }
       if (chosen.some(file => !file.size || file.size > MAX_ATTACHMENT_BYTES || file.name.length > 255)) { onError('Ogni file deve avere un nome entro 255 caratteri, non essere vuoto e pesare al massimo 2,5 MB.'); return; }
       setFiles(previous => [...previous,...chosen.map(file => ({ id:crypto.randomUUID(),file,uploaded:false }))]);

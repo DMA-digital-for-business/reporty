@@ -10,13 +10,23 @@ Monorepo npm workspaces per segnalare fix su siti e app web.
 
 ## Sito vetrina
 
-L’app indipendente `apps/landing` ospita il sito vetrina di Reporty, con demo illustrativa interattiva, funzionalità, FAQ e listino proposto. Non usa Supabase o il widget della dashboard. I pulsanti di accesso puntano a `https://reporty-extension.vercel.app/login`, personalizzabile con `NEXT_PUBLIC_DASHBOARD_URL` (solo origine). La home della dashboard mantiene il reindirizzamento a `/dashboard`.
+L’app indipendente `apps/landing` ospita il sito vetrina di Reporty con demo direttamente sulla landing, funzionalità, FAQ e listino proposto. La demo riusa **lo stesso `ReviewOverlay` e gli stessi stili di estensione e widget**, compilati in un bundle locale da `scripts/build-landing-demo.mjs` prima di sviluppo e build. Il bundle generato in `apps/landing/public/demo` è ignorato da Git. Il floating +, la selezione di elemento/pin libero, i pin espandibili, il form, la modale di lista/dettaglio, i filtri, le impostazioni e il tema sono quelli del prodotto. Nella demo il dettaglio si apre automaticamente dopo l’invio.
 
-Sviluppo: `npm run dev:landing` (porta 3001). Build: `npm run build:landing`.
+`apps/landing/lib/demo-transport.ts` implementa il protocollo del pannello usando esclusivamente il localStorage dell’origine, nella chiave versionata `reporty:landing-demo:v1`. Segnalazioni, risposte e nome già salvati dalla demo precedente restano validi. I dati sono validati al caricamento e sincronizzati tra schede; un errore di salvataggio non conferma falsi successi né aggiorna la copia in memoria. L’azzeramento, con conferma nella sezione demo, modifica soltanto questa chiave. Posizione e visibilità del pannello sono salvate in `reporty:landing-demo:preferences:v1`; il tema usa la preferenza locale del widget. Screenshot e allegati sono visibili ma disabilitati nella demo: nessuna cattura o upload viene avviato.
+
+La landing non usa Supabase o il bootstrap remoto del widget. Non ci sono sessioni o credenziali della dashboard nella demo e nessuna operazione del pannello invia dati al backend. I pulsanti di accesso puntano a `https://reporty-extension.vercel.app/login`, personalizzabile con `NEXT_PUBLIC_DASHBOARD_URL` (solo origine). La home della dashboard mantiene il reindirizzamento a `/dashboard`.
+
+Sviluppo: `npm run dev:landing` (porta 3001). Build: `npm run build:landing`. Test del salvataggio locale: `node --experimental-strip-types --test scripts/landing-demo.test.mjs`.
+
+La sezione Dashboard presenta Lista/Kanban, ricerca e filtri, progetti e ambienti, con anteprima illustrativa a dati di esempio e collegamento all’accesso.
+
+La sezione Funzionalità presenta anche MCP (consultazione in sola lettura del progetto autorizzato, con risposte, screenshot e allegati) e Playground (revisione dalla dashboard desktop, pagine in tab e viewport responsive). Gli schemi nelle card sono illustrativi; il Playground richiede un sito incorporabile e il widget attivo per pin e scorrimento.
+
+La landing include ingressi progressivi allo scroll, un alone iniziale nella hero, sottolineatura animata del titolo e microinterazioni con luce sulle card (inclinazione lieve su MCP e Playground, solo con mouse). Gli effetti sono implementati con CSS, IntersectionObserver e Web Animations API, senza librerie aggiuntive. Il contenuto resta visibile senza JavaScript; `prefers-reduced-motion` disabilita gli effetti decorativi anche quando cambia durante la sessione. Gli ingressi allo scroll vengono eseguiti una sola volta e il movimento del puntatore non provoca render React. Le FAQ usano Accordion Base UI con altezza misurata e transizioni in apertura/chiusura; i link interni scorrono in modo morbido, con movimento immediato quando è attivo reduced motion.
 
 Prezzi proposti (IVA esclusa): Starter 19 €/mese, Studio 49 €/mese e Agency 99 €/mese. Con fatturazione annuale proposta: rispettivamente 15, 39 e 79 €/mese, per un totale di 180, 468 e 948 €/anno. Quantità di progetti e ambienti sono indicative: non sono stati implementati pagamenti, abbonamenti o limiti applicativi. I pulsanti dei piani aprono l’accesso esistente senza avviare acquisti.
 
-I prezzi sono posizionati sotto le offerte iniziali di [Marker.io](https://marker.io/pricing) e [BugHerd](https://bugherd.com/pricing), consultate il 2 novembre 2026; il confronto è indicativo perché valute e funzionalità differiscono. Testi e struttura sono in `apps/landing/app/page.tsx`; demo e listino in `apps/landing/components/marketing/landing-interactions.tsx`; stili isolati in `landing.module.css` nella stessa cartella.
+I prezzi sono posizionati sotto le offerte iniziali di [Marker.io](https://marker.io/pricing) e [BugHerd](https://bugherd.com/pricing), consultate il 2 novembre 2026; il confronto è indicativo perché valute e funzionalità differiscono. Testi e struttura sono in `apps/landing/app/page.tsx`; demo in `apps/landing/components/marketing/product-demo.tsx` e listino in `apps/landing/components/marketing/landing-interactions.tsx`; stili isolati in `landing.module.css` nella stessa cartella.
 
 ### Deploy separato su Vercel
 

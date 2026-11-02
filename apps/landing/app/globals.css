@@ -11,6 +11,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-border: var(--border);
   --color-ring: var(--ring);
+  --color-muted-foreground: #686471;
+  --color-destructive: #b53737;
 }
 
 :root {
@@ -23,3 +25,8 @@
   --ring: #6938ef;
 }
 body { margin: 0; font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+html[data-reporty-demo-selecting='true'] [data-reporty-demo-page] * { cursor: crosshair !important; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
