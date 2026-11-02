@@ -22,7 +22,7 @@ export function DashboardNav({ projects }: { projects: { id: string; name: strin
         {filteredProjects.map(project => {
           const active = pathname === `/dashboard/projects/${project.id}`;
           return <li key={project.id}>
-            <Link href={`/dashboard/projects/${project.id}`} aria-current={active ? 'page' : undefined} className={`flex h-9 min-w-0 items-center gap-2.5 rounded-[8px] px-2.5 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 motion-reduce:transition-none ${active ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-foreground/5 hover:text-sidebar-foreground'}`}>
+            <Link href={`/dashboard/projects/${project.id}`} aria-current={active ? 'page' : undefined} className={`flex h-9 min-w-0 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 motion-reduce:transition-none ${active ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-foreground/5 hover:text-sidebar-foreground'}`}>
               <FolderClosed aria-hidden="true" className={`size-4 shrink-0 ${active ? 'text-sidebar-accent-foreground' : 'text-muted-foreground'}`} />
               <span className="min-w-0 flex-1 truncate" title={project.name}>{project.name}</span>
             </Link>

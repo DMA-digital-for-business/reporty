@@ -14,7 +14,7 @@ export function ReportOrder({ value, onChange, kanban = false }: { value: Report
     : value.direction === 'asc' ? 'Aperta → Chiusa' : 'Chiusa → Aperta';
   return <div className="ml-auto flex shrink-0 items-center gap-2">
     <span className="whitespace-nowrap text-xs text-muted-foreground">Ordina per</span>
-    <div className="w-44"><SelectField label="Ordina segnalazioni per" value={value.field} options={options.filter(option => !kanban || option.value !== 'status')} onValueChange={field => onChange({ field: field as ReportSort['field'], direction: field.endsWith('_at') ? 'desc' : 'asc' })} /></div>
-    <Button variant="outline" size="icon" className="size-10" aria-label={`Ordine: ${direction}. Inverti ordine`} title={`${direction} · inverti ordine`} onClick={() => onChange({ ...value, direction: value.direction === 'asc' ? 'desc' : 'asc' })}>{value.direction === 'asc' ? <ArrowUpNarrowWide className="size-4" /> : <ArrowDownWideNarrow className="size-4" />}</Button>
+    <div className="w-44 [&_[data-slot=select-trigger]]:h-8"><SelectField label="Ordina segnalazioni per" value={value.field} options={options.filter(option => !kanban || option.value !== 'status')} onValueChange={field => onChange({ field: field as ReportSort['field'], direction: field.endsWith('_at') ? 'desc' : 'asc' })} /></div>
+    <Button variant="outline" size="icon" aria-label={`Ordine: ${direction}. Inverti ordine`} title={`${direction} · inverti ordine`} onClick={() => onChange({ ...value, direction: value.direction === 'asc' ? 'desc' : 'asc' })}>{value.direction === 'asc' ? <ArrowUpNarrowWide className="size-4" /> : <ArrowDownWideNarrow className="size-4" />}</Button>
   </div>;
 }
