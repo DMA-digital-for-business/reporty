@@ -32,12 +32,14 @@ I prezzi sono posizionati sotto le offerte iniziali di [Marker.io](https://marke
 
 1. In Vercel scegliere **Add New → Project** e importare nuovamente lo stesso repository GitHub.
 2. Nome suggerito: `reporty-site`. Framework: **Next.js**. Root Directory: **`apps/landing`**.
-3. Abilitare **Include source files outside of the Root Directory in the Build Step** per i componenti di `packages/shared`.
+3. Abilitare **Include source files outside of the Root Directory in the Build Step** per i componenti di `packages/shared`, il pannello condiviso in `apps/extension` e gli script di build.
 4. Usare i comandi automatici di Vercel (Build `npm run build`, Output `.next`); l’installazione usa il `package-lock.json` della root del monorepo.
 5. Non servono variabili Supabase. Impostare facoltativamente `NEXT_PUBLIC_DASHBOARD_URL` solo se cambia l’origine della dashboard.
 6. Eseguire **Deploy**. Per un dominio proprio, aprire **Settings → Domains** nel nuovo progetto e seguire i record DNS indicati da Vercel.
 
 Il progetto Vercel esistente della dashboard mantiene Root Directory `apps/web`. Non sono necessari aggiornamenti del database o dell’estensione. Le modifiche devono essere presenti nel repository remoto prima dell’importazione; commit e push richiedono autorizzazione separata.
+
+La landing dichiara direttamente anche le dipendenze della compilazione del pannello (`vite`, `@tailwindcss/vite`, `tw-animate-css`, `shadcn`): non affidarsi alla loro presenza tramite il workspace dell’estensione. Per verificare un’installazione pulita in una copia temporanea del repository, usare `npm ci --workspace=@reporty/landing --include-workspace-root=false --ignore-scripts` e poi `npm run build --workspace=@reporty/landing`.
 
 ## Logo
 
