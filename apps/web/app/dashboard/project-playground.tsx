@@ -18,7 +18,7 @@ import { PlaygroundFrame } from './playground-frame';
 import { StopScreenshotSharing } from './screenshot-sharing';
 import { PlaygroundReportDrawer } from './playground-report-drawer';
 import type { PlaygroundReport } from './playground-trigger';
-import { isViewportDimension, playgroundUrl, viewportPresets, type PlaygroundEnvironment, type Viewport } from '@/lib/playground';
+import { isViewportDimension, playgroundReportUrl, playgroundUrl, viewportPresets, type PlaygroundEnvironment, type Viewport } from '@/lib/playground';
 
 type PageTab = { fitWidth: boolean; visited: boolean; id: string; src: string; url: string; viewport: Viewport; connected: boolean; reload: number; reportsRevision: number; selectedReport?: string; requestedReport?: { id: string; requestId: string } };
 function makeTab(url: string): PageTab {
@@ -59,7 +59,11 @@ function PlaygroundHeader({ projectName, hidden, children }: { projectName: stri
 
 function EnvironmentPlayground({ projectName, initialReport, environment, fullscreen, fullscreenTrigger, onFullscreen, onExitFullscreen }: { projectName: string; initialReport?: PlaygroundReport; environment: PlaygroundEnvironment; fullscreen: boolean; fullscreenTrigger: React.RefObject<HTMLButtonElement | null>; onFullscreen: () => void; onExitFullscreen: () => void }) {
   const [reportCache] = useState(() => createPlaygroundReportCache(
-    (pagePath, id) => getPlaygroundReport(environment.id, pagePath, id),
+    async (pagePath, id) => {
+      const result = await getPlaygroundReport(environment.id, pagePath, id);
+      if (result.error !== undefined) throw new Error(result.error);
+      return result.data;
+    },
     async (id, change) => {
       const result = await mutateReport(environment.id, 'status' in change ? 'status' : 'priority', { id, ...change }, false);
       if (result.error) throw new Error(result.error);
@@ -81,9 +85,9 @@ function EnvironmentPlayground({ projectName, initialReport, environment, fullsc
     void getReportPage(environment.id, { environments: [environment.id], limit: 1 }).then(result => {
       if (disposed) return;
       const pages = result.pages.flatMap(path => { try { return [playgroundUrl(path, environment.origin)]; } catch { return []; } });
-      const requestedUrl = initialReport ? new URL(playgroundUrl(initialReport.url, environment.origin)) : undefined;
+      const requestedUrl = initialReport ? new URL(playgroundReportUrl(initialReport, environment.origin)) : undefined;
       if (requestedUrl && initialReport) requestedUrl.searchParams.set('__reporty_issue', initialReport.id);
-      const choices = [...new Map([...(pages.length ? pages : [environment.origin]), ...(initialReport ? [playgroundUrl(initialReport.url, environment.origin)] : [])].map(url => [getPageContext(url).pagePath, url])).values()];
+      const choices = [...new Map([...(pages.length ? pages : [environment.origin]), ...(initialReport ? [playgroundReportUrl(initialReport, environment.origin)] : [])].map(url => [getPageContext(url).pagePath, url])).values()];
       const first = makeTab(requestedUrl?.href ?? choices[0]);
       first.visited = true;
       if (initialReport) {

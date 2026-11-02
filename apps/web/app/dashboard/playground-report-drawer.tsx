@@ -79,6 +79,9 @@ export function PlaygroundReportDrawer({ id, environmentId, pagePath, cache, onC
   const [gallery, setGallery] = useState<{ urls: string[]; loading: boolean } | null>(null);
   const loading = !detail && !failed;
   const toast = useToastManager();
+  const notifyLoadError = useEffectEvent((error: unknown, cached: boolean) => {
+    toast.add({ title: cached ? 'Aggiornamento dettaglio non riuscito' : 'Dettaglio non disponibile', description: error instanceof Error ? error.message : 'Riprova.', type: 'error' });
+  });
   const finishClose = useEffectEvent(onClose);
   useEffect(() => {
     if (!closing || !drawer.current) return;
@@ -100,20 +103,25 @@ export function PlaygroundReportDrawer({ id, environmentId, pagePath, cache, onC
   useEffect(() => {
     let disposed = false;
     let notified = false;
+    let unavailable = false;
     const refresh = async () => {
+      // A missing detail waits for an explicit retry; toast updates must not retry it.
+      if (unavailable) return;
       try {
         await cache.refresh(pagePath, id);
         if (!disposed) { setFailed(false); notified = false; }
       } catch (error) {
         if (disposed) return;
-        setFailed(!cache.get(pagePath, id));
-        if (!notified) toast.add({ title: cache.get(pagePath, id) ? 'Aggiornamento dettaglio non riuscito' : 'Dettaglio non disponibile', description: error instanceof Error ? error.message : 'Riprova.', type: 'error' });
+        const cached = !!cache.get(pagePath, id);
+        unavailable = !cached;
+        setFailed(!cached);
+        if (!notified) notifyLoadError(error, cached);
         notified = true;
       }
     };
     const stop = startNotificationPolling(refresh);
     return () => { disposed = true; stop(); };
-  }, [id, pagePath, cache, attempt, toast]);
+  }, [id, pagePath, cache, attempt]);
   async function reload() {
     await cache.refresh(pagePath, id, true);
   }

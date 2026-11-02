@@ -4,7 +4,7 @@ import { createContext, useContext } from 'react';
 import { MonitorPlay } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export type PlaygroundReport = { id: string; url: string };
+export type PlaygroundReport = { id: string; url: string; pagePath: string };
 export const PlaygroundContext = createContext<((environmentId: string, trigger: HTMLElement, report?: PlaygroundReport) => void) | null>(null);
 
 export function EnvironmentPlaygroundTrigger({ environmentId, environmentName }: { environmentId: string; environmentName: string }) {

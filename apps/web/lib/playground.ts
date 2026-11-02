@@ -22,6 +22,20 @@ export function playgroundUrl(input: string, origin: string) {
   return url.href;
 }
 
+/** page_path is the current identity; context.url may predate a page move. */
+export function playgroundReportUrl(report: { url: string; pagePath: string }, origin: string) {
+  const url = new URL(playgroundUrl(report.url, origin));
+  if (getPageContext(url.href).pagePath === report.pagePath) return url.href;
+  const current = new URL(playgroundUrl(report.pagePath, origin));
+  if (getPageContext(current.href).pagePath !== report.pagePath) throw new Error('Percorso della segnalazione non valido.');
+  url.pathname = current.pathname;
+  const previousRoute = url.hash.startsWith('#/') || url.hash.startsWith('#!/');
+  const routeQuery = previousRoute && url.hash.includes('?') ? url.hash.slice(url.hash.indexOf('?')) : '';
+  if (current.hash) url.hash = current.hash + routeQuery;
+  else if (previousRoute) url.hash = '';
+  return url.href;
+}
+
 export function isViewportDimension(value: number) {
   return Number.isInteger(value) && value >= 240 && value <= 3840;
 }

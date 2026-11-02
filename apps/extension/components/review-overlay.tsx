@@ -469,7 +469,8 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
             {(report.authorName?.trim() || 'Utente').slice(0, 1).toLocaleUpperCase('it-IT')}
             <span className={`absolute -left-3 -top-3 flex size-6 items-center justify-center rounded-full border-2 border-[color-mix(in_oklab,currentColor_35%,transparent)] ring-2 ring-card [&_svg]:size-4 ${statusColors[report.status]}`}><ReportIcon value={report.status} /></span>
           </span>
-          <span data-pin-preview className="invisible block opacity-0 transition-[opacity,visibility] duration-[150ms,0ms] delay-[0ms,150ms] ease-out group-hover:visible group-hover:opacity-100 group-hover:delay-[250ms,0ms] motion-reduce:transition-none">
+          {/* Overflow during collapse must not catch the pointer and reopen the pin. */}
+          <span data-pin-preview className="pointer-events-none invisible block opacity-0 transition-[opacity,visibility] duration-[150ms,0ms] delay-[0ms,150ms] ease-out group-hover:visible group-hover:opacity-100 group-hover:delay-[250ms,0ms] motion-reduce:transition-none">
             <span className="block w-[var(--reporty-pin-preview-width)] p-3 text-left">
               <span className="mb-3 flex flex-wrap gap-2 text-xs"><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${statusColors[report.status]}`}><ReportIcon value={report.status} />{statusLabels[report.status]}</span><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${priorityColors[report.priority ?? 'medium']}`}><ReportIcon value={report.priority ?? 'medium'} />Priorità {priorityLabels[report.priority ?? 'medium'].toLowerCase()}</span></span>
               <span className="line-clamp-4 whitespace-pre-wrap break-words text-sm">{report.body}</span>

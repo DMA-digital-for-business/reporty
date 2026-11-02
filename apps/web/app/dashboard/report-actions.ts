@@ -29,16 +29,22 @@ export async function getReportThread(environmentId: string, id: string) {
 }
 
 /** One browser request; both reads retain their existing backend authorization. */
-export async function getPlaygroundReport(environmentId: string, pagePath: string, id: string): Promise<PlaygroundReportDetail> {
+export async function getPlaygroundReport(environmentId: string, pagePath: string, id: string): Promise<{ data: PlaygroundReportDetail; error?: never } | { error: string; data?: never }> {
+  const { supabase } = await requireUser();
+  const query = reportPageSchema.safeParse({ id, pagePath, environments: [environmentId], limit: 1 });
+  if (!isUuid(environmentId) || !query.success) return { error: 'Dati non validi.' };
   const [listing, thread] = await Promise.all([
-    getReportPage(environmentId, { id, environments: [environmentId], pages: [pagePath], limit: 1 }),
-    getReportThread(environmentId, id),
+    supabase.rpc('report_page', { secret: null, target: environmentId, payload: { ...query.data, projectScope: true } }),
+    supabase.rpc('report_operation', { secret: null, target: environmentId, operation: 'thread', payload: { id } }),
   ]);
-  const report = listing.reports[0];
-  if (!report || report.environment_id !== environmentId || report.page_path !== pagePath || thread.error) {
-    throw new Error(thread.error ?? 'Segnalazione non disponibile in questa pagina.');
+  if (listing.error || thread.error) return { error: 'Caricamento del dettaglio non riuscito. Riprova.' };
+  // Match the ID too: an outdated pagination RPC must never open another report.
+  const report = (listing.data as ReportPage | null)?.reports?.find(report => report.id === id);
+  if (!report || report.environment_id !== environmentId || report.page_path !== pagePath
+    || thread.data?.issue?.id !== id || thread.data.issue.environment_id !== environmentId || thread.data.issue.page_path !== pagePath) {
+    return { error: 'Segnalazione non disponibile in questa pagina.' };
   }
-  return { report: { ...report, attachments: thread.data.issue.attachments ?? [] }, comments: thread.data.comments };
+  return { data: { report: { ...report, attachments: thread.data.issue.attachments ?? [] }, comments: thread.data.comments } };
 }
 
 export async function mutateReportsBulk(input: unknown) {

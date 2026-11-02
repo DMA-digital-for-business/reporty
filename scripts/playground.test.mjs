@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { getPageContext } from '../packages/shared/src/page.ts';
 const source = stripTypeScriptTypes(await readFile(new URL('../apps/web/lib/playground.ts', import.meta.url), 'utf8')).replace(/import .*?;\n/, '').replaceAll('export ', '');
-const { playgroundUrl, isPlaygroundMessage, isViewportDimension, playgroundFrameLayout } = new Function('getPageContext', source + '\nreturn {playgroundUrl,isPlaygroundMessage,isViewportDimension,playgroundFrameLayout};')(getPageContext);
+const { playgroundReportUrl, playgroundUrl, isPlaygroundMessage, isViewportDimension, playgroundFrameLayout } = new Function('getPageContext', source + '\nreturn {playgroundReportUrl,playgroundUrl,isPlaygroundMessage,isViewportDimension,playgroundFrameLayout};')(getPageContext);
 test('playground URLs stay on the exact environment origin, including port and protocol', () => {
   const origin = 'https://example.com:8443';
   assert.equal(playgroundUrl('/products?q=test#/detail?x=y', origin), `${origin}/products?q=test#/detail?x=y`);
@@ -33,4 +33,17 @@ test('fixed viewports retain their dimensions and fit inside both container axes
   assert.deepEqual(playgroundFrameLayout({width:1440,height:900},{width:720,height:600},false),{width:1440,height:900,scale:0.5});
   assert.deepEqual(playgroundFrameLayout({width:390,height:844},{width:900,height:422},false),{width:390,height:844,scale:0.5});
   assert.deepEqual(playgroundFrameLayout({width:390,height:844},{width:900,height:900},false),{width:390,height:844,scale:1});
+});
+
+
+test('reports moved to a new path open their current identity while retaining URL context', () => {
+  const origin = 'https://145645520.hs-sites-eu1.com';
+  const url = playgroundReportUrl({ url: `${origin}/en/it/news-events-group-bucci-industries?preview=1`, pagePath: '/en/it/news' }, origin);
+  assert.equal(url, `${origin}/en/it/news?preview=1`);
+  assert.equal(getPageContext(url).pagePath, '/en/it/news');
+  assert.equal(playgroundReportUrl({ url: `${origin}/page?lang=it#/old?sort=name`, pagePath: '/page#/new' }, origin), `${origin}/page?lang=it#/new?sort=name`);
+  assert.equal(playgroundReportUrl({ url: `${origin}/page#/old`, pagePath: '/news' }, origin), `${origin}/news`);
+  assert.equal(playgroundReportUrl({ url: `${origin}/news?lang=it#section`, pagePath: '/news' }, origin), `${origin}/news?lang=it#section`);
+  assert.throws(() => playgroundReportUrl({ url: 'https://other.example/news', pagePath: '/news' }, origin));
+  assert.throws(() => playgroundReportUrl({ url: `${origin}/news`, pagePath: '//other.example/news' }, origin));
 });

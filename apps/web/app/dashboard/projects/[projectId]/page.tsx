@@ -1,3 +1,4 @@
+import { EnvironmentPages, EnvironmentPagesSkeleton } from '../../environment-pages';
 import { Suspense } from 'react';
 import { McpSettings, McpSettingsSkeleton } from '../../mcp-settings';
 import { AccordionSection } from '@/components/ui/accordion';
@@ -73,6 +74,7 @@ export default async function Project({ params, searchParams }: {
             {widgetsResult.data?.find(widget => widget.environment_id === environment.id) ? <EnvironmentWidget environmentId={environment.id} enabled={widgetsResult.data.find(widget => widget.environment_id === environment.id)!.enabled} publicKey={widgetsResult.data.find(widget => widget.environment_id === environment.id)!.public_key} origin={appOrigin()} environmentOrigin={environment.origin} /> : <FeedbackToast message="Applica supabase/widget.sql per attivare gli script per ambiente." />}
             {linksResult.data?.find(link => link.environment_id === environment.id) ? <ReviewLinkForm projectId={projectId} environmentId={environment.id} link={`${appOrigin()}/guest/${linksResult.data.find(link => link.environment_id === environment.id)!.token}`} /> : <FeedbackToast message="Link ospite non disponibile. Inizializza il database con supabase/initialize.sql secondo il README Supabase." />}
             </AccordionSection>
+            {canManage ? <AccordionSection title="Pagine"><Suspense fallback={<EnvironmentPagesSkeleton />}><EnvironmentPages environmentId={environment.id} /></Suspense></AccordionSection> : null}
             {canManage ? <ResourceDelete id={environment.id} kind="environment" name={environment.name} /> : null}
         </AccordionSection>)}
       </section>
