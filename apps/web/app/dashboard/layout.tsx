@@ -1,13 +1,11 @@
-import { Plus, Activity, LogOut } from 'lucide-react';
-import { ThemeSwitch } from '@/components/theme-switch';
+import { Plus, LogOut } from 'lucide-react';
 
 import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { signOut } from '@/app/login/actions';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { SubmitButton } from '@/components/submit-button';
-import { Notifications } from './notifications';
 import { DashboardNav } from './nav';
 import { DashboardSidebar } from './sidebar';
 import { SidebarEmail } from './sidebar-email';
@@ -22,12 +20,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <DashboardCaptureSession />
       <DashboardSidebar content={children}>
         <div className="flex h-full min-h-0 flex-col gap-3 p-5">
-          <div className="flex items-center justify-between gap-2"><Link href="/dashboard" className="min-w-0"><BrandLogo /></Link><Notifications /></div>
+          <div className="flex items-center gap-2"><Link href="/dashboard" className="min-w-0"><BrandLogo /></Link></div>
           <DashboardNav projects={projects.data ?? []} />
-          <div className="flex items-center gap-2">
-            <ThemeSwitch />
-            <Button variant="outline" size="icon" nativeButton={false} render={<Link href="/dashboard/audit" prefetch={false} />} aria-label="Apri audit Supabase" title="Audit Supabase"><Activity className="size-4" aria-hidden="true" /></Button>
-          </div>
           <Link href="/dashboard/new" className={buttonVariants({ className: 'w-full justify-start gap-2' })}><Plus className="size-4" aria-hidden="true" />Nuovo progetto</Link>
           <StopScreenshotSharing />
           <div className="mt-auto flex min-w-0 items-center gap-2 border-t pt-4">

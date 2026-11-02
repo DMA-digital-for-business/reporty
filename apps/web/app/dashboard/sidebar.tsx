@@ -2,9 +2,20 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { Activity, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
 import { Button } from '@/components/ui/button';
+import { Notifications } from './notifications';
+import { ThemeSwitch } from '@/components/theme-switch';
+
+function HeaderActions() {
+  return <div className="ml-auto flex shrink-0 items-center gap-3">
+    <Button variant="outline" size="icon" nativeButton={false} render={<Link href="/dashboard/audit" prefetch={false} />} aria-label="Apri audit Supabase" title="Audit Supabase"><Activity className="size-4" aria-hidden="true" /></Button>
+    <ThemeSwitch />
+    <Notifications />
+  </div>;
+}
 
 function subscribeToViewport(onChange: () => void) {
   const mobile = window.matchMedia('(width < 768px)');
@@ -27,12 +38,15 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
 
-  return <div className={`min-h-screen md:grid ${collapsed ? 'md:grid-cols-[minmax(0,1fr)]' : 'md:grid-cols-[248px_minmax(0,1fr)]'}`}>
-    <aside id="dashboard-sidebar" aria-label="Navigazione dashboard" className={`sticky top-0 hidden h-screen min-h-0 border-r bg-sidebar text-sidebar-foreground ${collapsed ? '' : 'md:block'}`}>{mobile ? null : children}</aside>
+  return <div className={`min-h-screen md:grid md:transition-[grid-template-columns] md:duration-250 md:ease-in-out motion-reduce:transition-none ${collapsed ? 'md:grid-cols-[0px_minmax(0,1fr)]' : 'md:grid-cols-[248px_minmax(0,1fr)]'}`}>
+    <aside id="dashboard-sidebar" aria-label="Navigazione dashboard" aria-hidden={collapsed || mobile} inert={collapsed || mobile} className="sticky top-0 hidden h-screen min-h-0 min-w-0 overflow-hidden bg-sidebar text-sidebar-foreground md:block">
+      <div className={`h-full min-h-0 w-[248px] border-r transition-transform duration-250 ease-in-out motion-reduce:transition-none ${collapsed ? '-translate-x-full' : 'translate-x-0'}`}>{mobile ? null : children}</div>
+    </aside>
     <Dialog.Root open={mobile && open} onOpenChange={setOpen}>
       <header className="flex items-center gap-3 border-b bg-sidebar px-6 py-3 text-sidebar-foreground md:hidden">
         <Dialog.Trigger render={<Button variant="outline" size="icon" aria-label="Apri menu di navigazione" />}><Menu aria-hidden="true" /></Dialog.Trigger>
-        <BrandLogo />
+        <div className="min-w-0 overflow-hidden"><BrandLogo /></div>
+        {mobile ? <HeaderActions /> : null}
       </header>
       {mobile ? <Dialog.Portal keepMounted>
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
@@ -48,7 +62,7 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
       </Dialog.Portal> : null}
     </Dialog.Root>
     <div className="min-w-0 bg-muted/30">
-      <div className="hidden items-center border-b px-6 py-3 md:flex">
+      <div className="hidden items-center gap-3 border-b px-6 py-3 md:flex lg:px-10">
         <Button
           variant="outline"
           size="icon"
@@ -60,6 +74,7 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
         >
           {collapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
         </Button>
+        {mobile ? null : <HeaderActions />}
       </div>
       {content}
     </div>

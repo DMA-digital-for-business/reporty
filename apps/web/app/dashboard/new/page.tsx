@@ -10,7 +10,7 @@ import { buttonVariants } from '@/components/ui/button';
 
 export default async function NewProject({ searchParams }: { searchParams: Promise<{ message?: string }> }) {
   const { message } = await searchParams;
-  return <main className="w-full space-y-6 px-6 py-10 lg:px-10">
+  return <main className="w-full space-y-6 px-6 pt-6 pb-10 lg:px-10">
     <Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'sm' })}><ArrowLeft className="size-4" aria-hidden="true" />Indietro</Link>
     <h1 className="text-3xl font-semibold tracking-tight">Nuovo progetto</h1>
     <Feedback message={message} />
