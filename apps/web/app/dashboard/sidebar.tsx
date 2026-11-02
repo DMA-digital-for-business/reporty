@@ -38,12 +38,12 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
 
-  return <div className={`min-h-screen md:grid md:transition-[grid-template-columns] md:duration-250 md:ease-in-out motion-reduce:transition-none ${collapsed ? 'md:grid-cols-[0px_minmax(0,1fr)]' : 'md:grid-cols-[248px_minmax(0,1fr)]'}`}>
-    <aside id="dashboard-sidebar" aria-label="Navigazione dashboard" aria-hidden={collapsed || mobile} inert={collapsed || mobile} className="sticky top-0 hidden h-screen min-h-0 min-w-0 overflow-hidden bg-sidebar text-sidebar-foreground md:block">
+  return <div className={`fixed inset-0 flex min-h-0 flex-col overflow-hidden md:grid md:transition-[grid-template-columns] md:duration-250 md:ease-in-out motion-reduce:transition-none ${collapsed ? 'md:grid-cols-[0px_minmax(0,1fr)]' : 'md:grid-cols-[248px_minmax(0,1fr)]'}`}>
+    <aside id="dashboard-sidebar" aria-label="Navigazione dashboard" aria-hidden={collapsed || mobile} inert={collapsed || mobile} className="hidden h-full min-h-0 min-w-0 overflow-hidden bg-sidebar text-sidebar-foreground md:block">
       <div className={`h-full min-h-0 w-[248px] border-r transition-transform duration-250 ease-in-out motion-reduce:transition-none ${collapsed ? '-translate-x-full' : 'translate-x-0'}`}>{mobile ? null : children}</div>
     </aside>
     <Dialog.Root open={mobile && open} onOpenChange={setOpen}>
-      <header className="flex items-center gap-3 border-b bg-sidebar px-6 py-3 text-sidebar-foreground md:hidden">
+      <header className="flex shrink-0 items-center gap-3 border-b bg-sidebar px-6 py-3 text-sidebar-foreground md:hidden">
         <Dialog.Trigger render={<Button variant="outline" size="icon" aria-label="Apri menu di navigazione" />}><Menu aria-hidden="true" /></Dialog.Trigger>
         <div className="min-w-0 overflow-hidden"><BrandLogo /></div>
         {mobile ? <HeaderActions /> : null}
@@ -61,8 +61,8 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
         </Dialog.Popup>
       </Dialog.Portal> : null}
     </Dialog.Root>
-    <div className="min-w-0 bg-muted/30">
-      <div className="hidden items-center gap-3 border-b px-6 py-3 md:flex lg:px-10">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
+      <div className="hidden shrink-0 items-center gap-3 border-b px-6 py-3 md:flex lg:px-10">
         <Button
           variant="outline"
           size="icon"
@@ -76,7 +76,7 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
         </Button>
         {mobile ? null : <HeaderActions />}
       </div>
-      {content}
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">{content}</div>
     </div>
   </div>;
 }
