@@ -1,5 +1,5 @@
 import 'server-only';
-import { parseCounts, parseSizes } from './audit-data';
+import { parseCounts, parseSizes, parseStorage, STORAGE_USAGE_QUERY } from './audit-data';
 
 export async function getSupabaseAudit() {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
@@ -25,11 +25,7 @@ export async function getSupabaseAudit() {
   }
   const [database, storage, api] = await Promise.allSettled([
     request('database/query/read-only', 'select sum(pg_catalog.pg_database_size(datname))::bigint as bytes from pg_catalog.pg_database').then(data => parseSizes(data, ['bytes'])),
-    request('database/query/read-only', `select
-      case when count(*) filter(where coalesce(metadata->>'size','') !~ '^[0-9]+$') > 0 then null else coalesce(sum(case when metadata->>'size' ~ '^[0-9]+$' then (metadata->>'size')::bigint else 0 end),0) end as bytes,
-      case when count(*) filter(where bucket_id='screenshots' and coalesce(metadata->>'size','') !~ '^[0-9]+$') > 0 then null else coalesce(sum(case when bucket_id='screenshots' and metadata->>'size' ~ '^[0-9]+$' then (metadata->>'size')::bigint else 0 end),0) end as screenshot_bytes,
-      count(*) filter(where bucket_id='screenshots') as screenshot_count
-      from storage.objects`).then(data => parseSizes(data, ['bytes','screenshot_bytes','screenshot_count'])),
+    request('database/query/read-only', STORAGE_USAGE_QUERY).then(parseStorage),
     request('analytics/endpoints/usage.api-counts').then(parseCounts),
   ]);
   function result<T>(settled: PromiseSettledResult<T>) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { Menu, X } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { BrandLogo } from '@/components/brand-logo';
 import { Button } from '@/components/ui/button';
 
@@ -15,8 +15,9 @@ function subscribeToViewport(onChange: () => void) {
 const isMobileViewport = () => window.matchMedia('(width < 768px)').matches;
 const serverViewport = () => false;
 
-export function DashboardSidebar({ children }: { children: React.ReactNode }) {
+export function DashboardSidebar({ children, content }: { children: React.ReactNode; content: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const mobile = useSyncExternalStore(subscribeToViewport, isMobileViewport, serverViewport);
 
   useEffect(() => {
@@ -26,8 +27,8 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
 
-  return <>
-    <aside className="sticky top-0 hidden h-screen min-h-0 border-r bg-sidebar text-sidebar-foreground md:block">{mobile ? null : children}</aside>
+  return <div className={`min-h-screen md:grid ${collapsed ? 'md:grid-cols-[minmax(0,1fr)]' : 'md:grid-cols-[248px_minmax(0,1fr)]'}`}>
+    <aside id="dashboard-sidebar" aria-label="Navigazione dashboard" className={`sticky top-0 hidden h-screen min-h-0 border-r bg-sidebar text-sidebar-foreground ${collapsed ? '' : 'md:block'}`}>{mobile ? null : children}</aside>
     <Dialog.Root open={mobile && open} onOpenChange={setOpen}>
       <header className="flex items-center gap-3 border-b bg-sidebar px-6 py-3 text-sidebar-foreground md:hidden">
         <Dialog.Trigger render={<Button variant="outline" size="icon" aria-label="Apri menu di navigazione" />}><Menu aria-hidden="true" /></Dialog.Trigger>
@@ -46,5 +47,21 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
         </Dialog.Popup>
       </Dialog.Portal> : null}
     </Dialog.Root>
-  </>;
+    <div className="min-w-0 bg-muted/30">
+      <div className="hidden items-center border-b px-6 py-3 md:flex">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={collapsed ? 'Mostra sidebar' : 'Nascondi sidebar'}
+          title={collapsed ? 'Mostra sidebar' : 'Nascondi sidebar'}
+          aria-expanded={!collapsed}
+          aria-controls="dashboard-sidebar"
+          onClick={() => setCollapsed(value => !value)}
+        >
+          {collapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+        </Button>
+      </div>
+      {content}
+    </div>
+  </div>;
 }
