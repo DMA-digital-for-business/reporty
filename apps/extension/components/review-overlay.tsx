@@ -53,7 +53,7 @@ async function extensionMessage(body: object) {
 }
 const statusLabels = { open: 'Aperta', in_progress: 'In lavorazione', validation: 'Validazione', resolved: 'Chiusa' };
 const statusColors = { open: 'bg-red-100 text-red-800', in_progress: 'bg-orange-100 text-orange-800', validation: 'bg-blue-50 text-blue-900 dark:bg-blue-100 dark:text-blue-950', resolved: 'bg-emerald-100 text-emerald-800' };
-const pinColors = { open: 'bg-red-600', in_progress: 'bg-orange-500', validation: 'bg-blue-600', resolved: 'bg-emerald-600' };
+const pinColors = { low: 'bg-slate-600', medium: 'bg-amber-600', high: 'bg-red-600' };
 const priorityColors = { low: 'bg-slate-100 text-slate-700', medium: 'bg-amber-100 text-amber-800', high: 'bg-red-100 text-red-800' };
 /** Animate the measured content height, rather than a max-height ceiling. */
 function ExpandingPin({ children, anchorX, anchorY, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { anchorX: number; anchorY: number }) {
@@ -465,7 +465,10 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
       if (!position) return null;
       return <div key={report.id} className={`group pointer-events-auto fixed -translate-y-full ${highlighted === report.id ? 'z-20' : ''}`} style={{left:position.x,top:position.y}}>
         <ExpandingPin anchorX={position.x} anchorY={position.y} aria-label={`${statusLabels[report.status]}, priorità ${priorityLabels[report.priority ?? 'medium']}: ${report.body.slice(0,60)}`} className={`relative block ${highlighted === report.id ? 'reporty-pin-highlight' : ''} overflow-hidden rounded-tl-[22px] rounded-tr-[22px] rounded-br-[22px] border-2 border-primary/70 bg-card text-card-foreground shadow-md transition-[width,height,translate] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none`} onClick={() => void view(report)}>
-          <span className={`reporty-pin-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full ${pinColors[report.status]} text-xs font-semibold text-white transition-opacity duration-150 group-hover:opacity-0 motion-reduce:transition-none`}>{(report.authorName?.trim() || 'Utente').slice(0, 1).toLocaleUpperCase('it-IT')}</span>
+          <span aria-hidden="true" className={`reporty-pin-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full ${pinColors[report.priority ?? 'medium']} text-xs font-semibold text-white transition-opacity duration-150 group-hover:opacity-0 motion-reduce:transition-none`}>
+            {(report.authorName?.trim() || 'Utente').slice(0, 1).toLocaleUpperCase('it-IT')}
+            <span className={`absolute -left-1 -top-1 flex size-4 items-center justify-center rounded-full ring-2 ring-card ${statusColors[report.status]}`}><ReportIcon value={report.status} /></span>
+          </span>
           <span data-pin-preview className="invisible block opacity-0 transition-[opacity,visibility] duration-[150ms,0ms] delay-[0ms,150ms] ease-out group-hover:visible group-hover:opacity-100 group-hover:delay-[250ms,0ms] motion-reduce:transition-none">
             <span className="block w-[var(--reporty-pin-preview-width)] p-3 text-left">
               <span className="mb-3 flex flex-wrap gap-2 text-xs"><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${statusColors[report.status]}`}><ReportIcon value={report.status} />{statusLabels[report.status]}</span><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${priorityColors[report.priority ?? 'medium']}`}><ReportIcon value={report.priority ?? 'medium'} />Priorità {priorityLabels[report.priority ?? 'medium'].toLowerCase()}</span></span>

@@ -43,7 +43,7 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
       <div className={`h-full min-h-0 w-[248px] border-r transition-transform duration-250 ease-in-out motion-reduce:transition-none ${collapsed ? '-translate-x-full' : 'translate-x-0'}`}>{mobile ? null : children}</div>
     </aside>
     <Dialog.Root open={mobile && open} onOpenChange={setOpen}>
-      <header className="flex shrink-0 items-center gap-3 border-b bg-sidebar px-6 py-3 text-sidebar-foreground md:hidden">
+      <header className="flex shrink-0 items-center gap-3 border-b bg-sidebar px-5 py-3 text-sidebar-foreground md:hidden">
         <Dialog.Trigger render={<Button variant="outline" size="icon" aria-label="Apri menu di navigazione" />}><Menu aria-hidden="true" /></Dialog.Trigger>
         <div className="min-w-0 overflow-hidden"><BrandLogo /></div>
         {mobile ? <HeaderActions /> : null}
@@ -62,7 +62,7 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
       </Dialog.Portal> : null}
     </Dialog.Root>
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
-      <div className="hidden shrink-0 items-center gap-3 border-b px-6 py-3 md:flex lg:px-10">
+      <div className="hidden shrink-0 items-center gap-3 border-b px-5 py-3 md:flex">
         <Button
           variant="outline"
           size="icon"

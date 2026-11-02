@@ -62,12 +62,23 @@ export async function mutateReportsBulk(input: unknown) {
 }
 
 export async function getReportPage(environmentId: string, input: unknown): Promise<ReportPage> {
+  return (await getReportPages(environmentId, [input]))[0];
+}
+
+/** Parallel reads inside one action avoid sequential client-side action dispatch. */
+export async function getReportPages(environmentId: string, inputs: unknown[]): Promise<ReportPage[]> {
   const { supabase } = await requireUser();
-  const parsed = reportPageSchema.safeParse(input);
-  if (!isUuid(environmentId) || !parsed.success) throw new Error('Dati di paginazione non validi.');
-  const { data, error } = await supabase.rpc('report_page', { secret: null, target: environmentId, payload: { ...parsed.data, projectScope: true } });
-  if (error) throw new Error('Caricamento segnalazioni non riuscito. Verifica che report_pagination.sql sia applicato e riprova.');
-  return data as ReportPage;
+  if (!isUuid(environmentId) || !Array.isArray(inputs) || !inputs.length || inputs.length > 100) throw new Error('Dati di paginazione non validi.');
+  const queries = inputs.map(input => {
+    const parsed = reportPageSchema.safeParse(input);
+    if (!parsed.success) throw new Error('Dati di paginazione non validi.');
+    return parsed.data;
+  });
+  return Promise.all(queries.map(async query => {
+    const { data, error } = await supabase.rpc('report_page', { secret: null, target: environmentId, payload: { ...query, projectScope: true } });
+    if (error) throw new Error('Caricamento segnalazioni non riuscito. Verifica che report_pagination.sql sia applicato e riprova.');
+    return data as ReportPage;
+  }));
 }
 
 export async function getReportSelection(environmentId: string, input: unknown): Promise<ReportSelection[]> {

@@ -13,7 +13,7 @@ export default async function Dashboard({ searchParams }: {
   if (projectsResult.error) throw new Error('Impossibile caricare i progetti');
   const projects = (projectsResult.data ?? []).map(project => ({ ...project, openReportCount: project.open_reports[0]?.count ?? 0 }));
   return (
-    <main className="w-full space-y-8 px-6 pt-6 pb-10 lg:px-10">
+    <main className="w-full space-y-8 px-5 pt-6 pb-10">
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight">Tutti i progetti</h1></div>
         <p className="text-muted-foreground">Gestisci tutti i siti, gli ambienti e le segnalazioni insieme agli altri sviluppatori.</p>

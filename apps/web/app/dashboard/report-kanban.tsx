@@ -39,20 +39,19 @@ function InfiniteColumn({ children, total, visible, loading, failed, onLoadMore 
   }, [hasMore, visible, loading, failed, onLoadMore]);
   return <div ref={root} className="max-h-[65vh] min-h-40 space-y-3 overflow-y-auto p-3">
     {children}
-    {hasMore || loading || failed ? <div ref={sentinel} role="status" aria-label="Caricamento altre segnalazioni" className="space-y-3">
+    {hasMore || loading || failed ? <div ref={sentinel} role="status" aria-label="Caricamento altre segnalazioni" className="min-h-px space-y-3">
       {loading && !failed ? <div className="space-y-3 rounded-xl border bg-card p-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /><Skeleton className="h-5 w-16 rounded-full" /><div className="space-y-1"><Skeleton className="h-3 w-3/4" /><div className="flex items-center gap-2"><Skeleton className="h-3 w-1/3" /><Skeleton className="h-3 w-1/2" /></div></div></div> : null}
-      <Button variant="outline" className="w-full" disabled={loading} onClick={onLoadMore}>{failed ? 'Riprova il caricamento' : 'Carica altre segnalazioni'}</Button>
+      {failed ? <Button variant="outline" className="w-full" onClick={onLoadMore}>Riprova il caricamento</Button> : null}
     </div> : null}
   </div>;
 }
 
-export function ReportKanban({ reports, columns: feeds, environments, busy, movingId, onOpen, onMove, renderContextMenu }: {
+export function ReportKanban({ reports, columns: feeds, environments, busy, onOpen, onMove, renderContextMenu }: {
   renderContextMenu: (report: Report, card: React.ReactElement) => React.ReactNode;
   reports: Report[];
   columns: Record<Status, ColumnFeed>;
   environments: { id: string; name: string }[];
   busy: boolean;
-  movingId: string | null;
   onOpen: (report: Report) => void;
   onMove: (report: Report, status: Status) => void;
 }) {
@@ -80,7 +79,7 @@ export function ReportKanban({ reports, columns: feeds, environments, busy, movi
           <header className={`flex items-center gap-2 rounded-t-xl border-b p-3 ${colors[column.value]}`}><h3 className="m-0 flex items-center gap-2 text-sm font-semibold leading-none [&>svg]:block [&>svg]:size-4"><ReportIcon value={column.value} /><span className="block leading-none">{column.label}</span><ReportCountBadge count={feeds[column.value].total} className="border-current/20 bg-current/10 text-inherit" label={`segnalazioni: ${column.label}`} /></h3></header>
           <InfiniteColumn total={feeds[column.value].total} visible={items.length} loading={feeds[column.value].loading} failed={feeds[column.value].failed} onLoadMore={() => { if (!busy) { if (feeds[column.value].failed && !items.length) feeds[column.value].refresh(); else void feeds[column.value].loadMore(); } }}>
             {!items.length && !feeds[column.value].loading && !feeds[column.value].failed ? <p className="py-8 text-center text-xs text-muted-foreground">Nessuna segnalazione</p> : null}
-            {items.map(report => renderContextMenu(report, <Card key={report.id} aria-busy={movingId === report.id} size="sm" className={`cursor-pointer border shadow-none ring-0 transition-colors hover:border-primary/30 hover:bg-primary/5 ${draggedId === report.id ? 'opacity-40' : ''}`}
+            {items.map(report => renderContextMenu(report, <Card key={report.id} size="sm" className={`cursor-pointer border shadow-none ring-0 transition-colors hover:border-primary/30 hover:bg-primary/5 ${draggedId === report.id ? 'opacity-40' : ''}`}
               onClick={event => { if (!busy && !suppressClick.current && !(event.target as HTMLElement).closest('button, input, a')) onOpen(report); }}
               draggable={report.canChangeStatus && !busy}
               onDragStart={event => { if (busy || !report.canChangeStatus) { event.preventDefault(); return; } if (clickResetTimer.current !== null) { clearTimeout(clickResetTimer.current); clickResetTimer.current = null; } dragging.current = report.id; suppressClick.current = true; setDraggedId(report.id); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', report.id); }}

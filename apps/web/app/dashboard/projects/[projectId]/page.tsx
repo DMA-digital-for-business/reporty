@@ -52,7 +52,7 @@ export default async function Project({ params, searchParams }: {
     ...participants.filter(person => person.kind === 'guest'),
   ];
   return (
-    <main className="w-full space-y-4 px-6 pt-6 pb-10 lg:px-10">
+    <main className="w-full space-y-4 px-5 pt-6 pb-10">
       <Link href="/dashboard" className={buttonVariants({ variant: 'ghost' })}>← Tutti i progetti</Link>
       <header className="flex flex-wrap items-center gap-3 md:sr-only">
         <h1 className="text-3xl font-semibold tracking-tight">{project.name}</h1>

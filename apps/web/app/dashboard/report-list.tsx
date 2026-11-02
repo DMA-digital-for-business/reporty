@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { pageSelectionState, selectReportPage } from '@/lib/report-selection';
 import { applyBulkReportBatch, type BulkReportAction, type BulkReportProgress } from '@/lib/bulk-report-update';
 import { saveReportView } from './report-view-actions';
+import { createReportMoveQueue } from '@/lib/report-move-queue';
 import { CreateReport } from './create-report';
 
 const statusColors = { open: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200', in_progress: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200', validation: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200', resolved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' };
@@ -64,7 +65,9 @@ export function ReportList({ projectId, initialView, environments, participants,
   const view = mobile ? 'list' : desktopView;
   const [moving, startMove] = useTransition();
   const moveLock = useRef(false);
-  const [movingId, setMovingId] = useState<string | null>(null);
+  const [kanbanMoves, setKanbanMoves] = useState<Record<string, { status: Report['status'] }>>({});
+  const latestKanbanMove = useRef(new Map<string, object>());
+  const enqueueMove = useRef(createReportMoveQueue());
   const selectionVersion = useRef(0);
   const [searchInput, setSearch] = useState(''), [filter, setFilter] = useState<string[]>([]), [priority, setPriority] = useState<string[]>([]), [environment, setEnvironment] = useState<string[]>([]), [page, setPage] = useState<string[]>([]);
   const search = useDebouncedValue(searchInput);
@@ -98,10 +101,18 @@ export function ReportList({ projectId, initialView, environments, participants,
   }, [feed.loading, feed.failed, feed.projectTotal, updateProjectReportCount]);
   const reports = feed.reports;
   const [displayReports, updateOptimisticStatus] = useOptimistic(reports, (items, change: { id: string; status?: Report['status']; priority?: Report['priority'] }) => items.map(item => item.id === change.id ? { ...item, ...change } : item));
-  const current = displayReports.find(report => report.id === selected?.id) ?? selected;
   const pages = feed.pages;
   const environmentNames = new Map(environments.map(item => [item.id,item.name]));
-  const filtered = displayReports;
+  const filtered = displayReports.map(report => kanbanMoves[report.id] ? { ...report, ...kanbanMoves[report.id] } : report);
+  const current = filtered.find(report => report.id === selected?.id) ?? selected;
+  const kanbanColumns = { ...feed.columns };
+  for (const status of Object.keys(kanbanColumns) as Report['status'][]) {
+    // Column totals belong to the server snapshot; include moves immediately,
+    // including confirmed patches awaiting the next background poll.
+    const outgoing = feed.columns[status].reports.filter(report => (kanbanMoves[report.id]?.status ?? report.status) !== status).length;
+    const incoming = Object.entries(feed.columns).filter(([source]) => source !== status).flatMap(([, column]) => column.reports).filter(report => (kanbanMoves[report.id]?.status ?? report.status) === status).length;
+    kanbanColumns[status] = { ...feed.columns[status], total: feed.columns[status].total - outgoing + incoming };
+  }
   const pagination = { page: pageNumber, pages: Math.max(1, Math.ceil(feed.total / REPORT_PAGE_SIZE)), setPage: (next: number) => setPageSelection({ key: filterKey, page: next }) };
   if (!feed.loading && !feed.failed && pageNumber > pagination.pages) setPageSelection({ key: filterKey, page: pagination.pages });
   const bulkScope = filterKey;
@@ -224,9 +235,36 @@ export function ReportList({ projectId, initialView, environments, participants,
   });
   useEffect(() => { openLinkedReport(); }, [initialReportId]);
   function moveReport(report: Report, status: Report['status'], priority?: Report['priority']) {
-    if (moveLock.current || busy || moving || bulkLock.current || !report.canChangeStatus || (priority ? report.priority === priority : report.status === status)) return;
+    if (busy || moving || bulkLock.current || !report.canChangeStatus || (priority ? report.priority === priority : report.status === status)) return;
+    if (view === 'kanban' && !priority) {
+      const token = {};
+      latestKanbanMove.current.set(report.id, token);
+      setKanbanMoves(previous => ({ ...previous, [report.id]: { status } }));
+      void enqueueMove.current(report.id, async () => {
+        try {
+          const result = await mutateReport(report.environment_id, 'status', { id: report.id, status }, false);
+          if (result.error) throw new Error(result.error);
+          feed.patchReport({ id: report.id, status });
+          setSelected(previous => previous?.id === report.id ? { ...previous, status } : previous);
+          window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+        } catch (error) {
+          toast.add({ title: 'Spostamento non riuscito', description: error instanceof Error ? error.message : 'Riprova.', type: 'error' });
+        } finally {
+          if (latestKanbanMove.current.get(report.id) === token) {
+            latestKanbanMove.current.delete(report.id);
+            setKanbanMoves(previous => {
+              const next = { ...previous };
+              delete next[report.id];
+              return next;
+            });
+            if (!latestKanbanMove.current.size) void feed.poll();
+          }
+        }
+      });
+      return;
+    }
+    if (moveLock.current) return;
     moveLock.current = true;
-    setMovingId(report.id);
     startMove(async () => {
       updateOptimisticStatus({ id: report.id, ...(priority ? { priority } : { status }) });
       try {
@@ -239,7 +277,7 @@ export function ReportList({ projectId, initialView, environments, participants,
         if (view === 'kanban') await feed.poll();
         else router.refresh();
       } catch (error) { toast.add({ title: priority ? 'Aggiornamento priorità non riuscito' : 'Spostamento non riuscito', description: error instanceof Error ? error.message : 'Riprova.', type: 'error' }); }
-      finally { moveLock.current = false; setMovingId(null); }
+      finally { moveLock.current = false; }
     });
   }
   function pageUrl(report: Report) {
@@ -279,7 +317,7 @@ export function ReportList({ projectId, initialView, environments, participants,
     </div>
     {activeFilters.length ? <div className="flex flex-wrap gap-2" aria-label="Filtri attivi">{activeFilters.map(item => <FilterPill key={item.key} label={item.label} onRemove={() => { if (!bulkProgress) item.remove(); }}><ReportIcon value={item.key.replace(/^(status|priority)-/, "")} /></FilterPill>)}</div> : null}
 
-    <div className="space-y-5">{view === 'kanban' ? <ReportKanban renderContextMenu={reportContextMenu} key={JSON.stringify([search, priority, environment, page, users, order])} reports={filtered} columns={feed.columns} environments={environments} busy={busy || moving} movingId={movingId} onOpen={openReport} onMove={moveReport} /> : <><div ref={listRef} aria-busy={feed.loading}>{feed.failed ? <Button variant="outline" onClick={feed.refresh}>Riprova il caricamento</Button> : null}{feed.loading ? <ReportListSkeleton mobile={mobile} /> : <>
+    <div className="space-y-5">{view === 'kanban' ? <ReportKanban renderContextMenu={reportContextMenu} key={JSON.stringify([search, priority, environment, page, users, order])} reports={filtered} columns={kanbanColumns} environments={environments} busy={busy || moving} onOpen={openReport} onMove={moveReport} /> : <><div ref={listRef} aria-busy={feed.loading}>{feed.failed ? <Button variant="outline" onClick={feed.refresh}>Riprova il caricamento</Button> : null}{feed.loading ? <ReportListSkeleton mobile={mobile} /> : <>
     {mobile ? <div className="space-y-3">
       <label className="flex min-h-11 items-center gap-3 text-sm"><Checkbox aria-label={allFilteredSelected ? 'Deseleziona tutte le segnalazioni' : pageSelectionStatus.all ? 'Deseleziona le segnalazioni della pagina' : 'Seleziona le segnalazioni della pagina'} checked={pageSelectionStatus.all} indeterminate={pageSelectionStatus.partial} disabled={bulkDisabled || !filtered.length} onCheckedChange={checked => selectPage(Boolean(checked))} />Seleziona la pagina</label>
       {!filtered.length ? <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">Nessuna segnalazione trovata.</p> : null}
@@ -325,7 +363,7 @@ export function ReportList({ projectId, initialView, environments, participants,
     </>}</div>
     <ReportPagination total={feed.total} page={pagination.page} pages={pagination.pages} onChange={next => { pagination.setPage(next); listRef.current?.scrollIntoView({ block: 'start' }); }} /><ReportBulkToolbar total={feed.total} showSelectAll={pageSelectionStatus.all && !allFilteredSelected} selectingAll={selectingAll} onSelectAll={() => void selectAll()} onDeselectAll={() => setBulkSelection({ scope: bulkScope, targets: [] })} count={bulkProgress?.total ?? selectedReports.length} disabled={bulkDisabled} pending={bulkProgress} canUpdate={selectedReports.every(report => report.canChangeStatus)} canDelete={selectedReports.every(report => report.canEdit)} onApply={applyBulk} /></>}
     <Dialog showClose={false} open={Boolean(deleteTarget)} onOpenChange={open => { if (!open && !busy) setDeleteTarget(null); }}><div className="space-y-4"><DialogTitle className="text-lg font-semibold">Conferma eliminazione</DialogTitle><DialogDescription>Eliminare questa segnalazione e tutte le sue risposte? Questa operazione è definitiva.</DialogDescription><p className="line-clamp-3 break-words [overflow-wrap:anywhere] text-sm text-muted-foreground">{deleteTarget?.body}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={busy} onClick={() => setDeleteTarget(null)}>Annulla</Button><Button variant="destructive" disabled={busy} onClick={() => void deleteReport()}><Trash2 aria-hidden="true" />Elimina</Button></div></div></Dialog>
-    <Dialog showClose={false} open={Boolean(current)} onOpenChange={open => { if (!open && !busy) { selectionVersion.current++; setSelected(null); setImages([]); if (initialReportId) { const url = new URL(window.location.href); url.searchParams.delete('report'); router.replace(url.pathname + url.search, { scroll: false }); } } }}>{current ? <div className="space-y-5"><header className="flex flex-wrap items-center justify-between gap-3"><DialogTitle className="text-xl font-semibold">Dettaglio segnalazione</DialogTitle><div className="ml-auto flex items-center gap-2"><DialogClose render={<Button variant="outline" size="icon" aria-label="Chiudi dettaglio" disabled={busy} />}><X className="size-4" aria-hidden="true" /></DialogClose></div></header><DialogDescription className="sr-only">Dati e gestione della segnalazione</DialogDescription>
+    <Dialog showClose={false} open={Boolean(current)} onOpenChange={open => { if (!open && !busy) { selectionVersion.current++; setSelected(null); setImages([]); if (initialReportId) { const url = new URL(window.location.href); url.searchParams.delete('report'); router.replace(url.pathname + url.search, { scroll: false }); } } }}>{current ? <div className="space-y-5"><header className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0 flex-1 space-y-1"><DialogTitle className="text-xl font-semibold">Dettaglio segnalazione</DialogTitle><p className="truncate text-xs text-muted-foreground" title={current.page_path}>{environmentNames.get(current.environment_id)} · {current.page_path}</p></div><div className="ml-auto flex items-center gap-2"><DialogClose render={<Button variant="outline" size="icon" aria-label="Chiudi dettaglio" disabled={busy} />}><X className="size-4" aria-hidden="true" /></DialogClose></div></header><DialogDescription className="sr-only">Dati e gestione della segnalazione</DialogDescription>
       <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-2"><Badge className={`border-[color-mix(in_oklab,currentColor_25%,transparent)] ${statusColors[current.status]}`}><ReportIcon value={current.status} />{labels[current.status]}</Badge><Badge className={`border-[color-mix(in_oklab,currentColor_25%,transparent)] ${priorityColors[current.priority ?? 'medium']}`} ><ReportIcon value={current.priority ?? 'medium'} />Priorità {priorityLabels[current.priority ?? 'medium'].toLowerCase()}</Badge></div><div className="flex flex-wrap gap-2">{current.screenshot_path ? <TooltipButton label="Mostra screenshot" disabled={busy || imageLoading} onClick={() => { setImages([]); setGalleryOpen(true); setImageLoading(true); void run(async () => { try { const version = selectionVersion.current; const response = await fetch(`/api/reports/${current.id}/screenshot`); const data = await response.json(); if (!response.ok) throw new Error(data.error ?? 'Screenshot non disponibile.'); if (version === selectionVersion.current) setImages(data.urls ?? [data.url]); } catch (error) { setGalleryOpen(false); throw error; } }).finally(() => setImageLoading(false)); }}><Eye className="size-4" aria-hidden="true" /></TooltipButton> : null}<TooltipButton label="Apri pagina originale" nativeButton={false} render={<a href={pageUrl(current)} target="_blank" rel="noopener noreferrer" />}><ExternalLink className="size-4" aria-hidden="true" /></TooltipButton>{openPlayground && !mobile ? <TooltipButton label="Apri in playground" disabled={busy || moving || pageUrl(current) === '#'} onClick={event => openPlayground(current.environment_id, event.currentTarget, { id: current.id, url: current.context.url })}><MonitorPlay className="size-4" aria-hidden="true" /></TooltipButton> : null}</div></div>
       <section aria-labelledby="report-description-title" className="space-y-3 rounded-xl border bg-muted/50 dark:bg-card p-4"><h3 id="report-description-title" className="text-sm font-semibold">Descrizione</h3>{editing ? <form className="grid gap-3" onSubmit={event => { event.preventDefault(); if (busy || !edited.trim() || edited.trim() === current.body.trim()) return; void run(async () => { await mutate('edit', {body:edited}); setEditing(false); }); }}><Textarea aria-label="Modifica descrizione" className="min-h-28 rounded-lg border bg-background p-3" value={edited} onChange={event => setEdited(event.target.value)} required maxLength={10000} /><div className="flex justify-end gap-2"><Button variant="outline" type="button" disabled={busy} onClick={() => setEditing(false)}>Annulla</Button><Button disabled={busy || !edited.trim() || edited.trim() === current.body.trim()} type="submit">Salva testo</Button></div></form> : <><p className="whitespace-pre-wrap break-words leading-relaxed">{current.body}</p>{current.canEdit ? <div className="flex justify-end"><TooltipButton label="Modifica descrizione" onClick={() => { setEdited(current.body); setEditing(true); }}><Pencil className="size-4" aria-hidden="true" /></TooltipButton></div> : null}</>}</section>
       {reportFiles.length ? <section className="space-y-3 rounded-xl border bg-muted/50 p-4" aria-label="File allegati alla segnalazione"><h3 className="font-semibold">File allegati</h3><ReplyAttachmentList attachments={reportFiles} label="File della segnalazione" requestFile={input => requestAttachment({ ...input, scope: 'report' })} onError={attachmentError} /></section> : null}
