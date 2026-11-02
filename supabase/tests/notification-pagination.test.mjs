@@ -43,6 +43,8 @@ for (const migrate of [false,true]) test(`notification paging: ${migrate?'increm
     if(migrate){
       const sql=await readFile(new URL('../notification_pagination.sql',import.meta.url),'utf8');
       await db.exec(sql);await db.exec(sql);
+      const filterSql=await readFile(new URL('../notification_kind_filter.sql',import.meta.url),'utf8');
+      await db.exec(filterSql);await db.exec(filterSql);
       assert.equal((await db.query('select count(*)::int n from public.notifications')).rows[0].n,66);
       assert.equal((await db.query('select count(*)::int n from public.notifications where read_at is not null')).rows[0].n,10);
     }
@@ -55,6 +57,19 @@ for (const migrate of [false,true]) test(`notification paging: ${migrate?'increm
     assert.equal((await page({reads:['unread']})).total,55);assert.equal((await page({reads:['read']})).total,10);
     assert.equal((await page({projects:[otherProject]})).total,5);assert.equal((await page({environments:[env2]})).total,10);
     assert.equal((await page({statuses:['open']})).total,32);
+    await db.exec('reset role');
+    await db.query("update public.notifications set kind='status_changed' where id=any($1::uuid[])",[ids.slice(0,25)]);
+    await db.query("update public.notifications set kind='reply' where id=any($1::uuid[])",[ids.slice(25,50)]);
+    await as(dev);
+    const replies=await page({kinds:['reply'],limit:20});
+    assert.equal(replies.total,25);assert.equal(replies.items.length,20);
+    assert.ok(replies.items.every(item=>item.kind==='reply'));
+    assert.deepEqual((await page({kinds:['reply'],offset:20})).items.map(item=>item.id),ids.slice(25,30).reverse());
+    assert.equal((await page({kinds:['created','reply']})).total,40);
+    assert.equal((await page({kinds:['status_changed'],reads:['unread']})).total,15);
+    assert.equal((await page({kinds:['reply'],environments:[env2]})).total,0);
+    assert.equal((await page({kinds:[]})).total,65);
+    assert.equal(replies.unread,55);
     assert.equal(first.projects.length,2);assert.equal(first.environments.length,3);
     const summary=await page({mode:'summary'});
     assert.deepEqual(summary.items,[]);assert.equal(summary.arrivalCount,0);assert.equal(summary.latest,null);assert.equal(summary.unread,55);

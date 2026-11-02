@@ -1068,6 +1068,7 @@ begin
     select * from scoped where
       (coalesce(jsonb_array_length(payload->'projects'),0)=0 or payload->'projects' ? project_id::text)
       and (coalesce(jsonb_array_length(payload->'environments'),0)=0 or payload->'environments' ? environment_id::text)
+      and (coalesce(jsonb_array_length(payload->'kinds'),0)=0 or payload->'kinds' ? kind)
       and (coalesce(jsonb_array_length(payload->'statuses'),0)=0 or payload->'statuses' ? status)
       and (coalesce(jsonb_array_length(payload->'reads'),0)=0 or payload->'reads' ? case when read_at is null then 'unread' else 'read' end)
   ), batch as (

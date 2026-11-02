@@ -34,6 +34,7 @@ export const notificationPageSchema = z.object({
   offset: z.number().int().nonnegative().optional(), limit: z.number().int().min(1).max(100).optional(),
   projects: z.array(z.string().uuid()).optional(), environments: z.array(z.string().uuid()).optional(),
   statuses: z.array(z.enum(['open','in_progress','validation','resolved'])).max(4).optional(),
+  kinds: z.array(z.enum(['created','status_changed','reply'])).max(3).optional(),
   reads: z.array(z.enum(['read','unread'])).max(2).optional(), pagePath: z.string().max(8192).optional(),
   after: z.object({ createdAt: z.string().datetime({ offset: true }), id: z.string().uuid() }).optional(),
 });

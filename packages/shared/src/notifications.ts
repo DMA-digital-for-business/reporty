@@ -23,3 +23,5 @@ export function notificationSummary(item: Pick<ReportNotification, 'kind' | 'pre
   const kind = notificationKind(item);
   return `${item.actor_name}: ${kind === 'reply' ? 'Nuova risposta' : kind === 'created' ? 'Nuova segnalazione' : `${item.previous_status ? labels[item.previous_status] : ''} → ${labels[item.status]}`}`;
 }
+
+export const notificationKindLabels = { created: 'Nuova segnalazione', status_changed: 'Cambio di stato', reply: 'Nuova risposta' } as const;
