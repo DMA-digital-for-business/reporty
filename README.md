@@ -3,9 +3,31 @@
 Monorepo npm workspaces per segnalare fix su siti e app web.
 
 - `apps/web`: dashboard e API Next.js, da distribuire su Vercel.
+- `apps/landing`: sito vetrina Next.js, da distribuire su un progetto Vercel separato.
 - `apps/extension`: estensione WXT + React per Chrome ed Edge.
 - `packages/shared`: tipi e identificazione delle pagine condivisi.
 - `supabase`: destinazione delle migrazioni database.
+
+## Sito vetrina
+
+L’app indipendente `apps/landing` ospita il sito vetrina di Reporty, con demo illustrativa interattiva, funzionalità, FAQ e listino proposto. Non usa Supabase o il widget della dashboard. I pulsanti di accesso puntano a `https://reporty-extension.vercel.app/login`, personalizzabile con `NEXT_PUBLIC_DASHBOARD_URL` (solo origine). La home della dashboard mantiene il reindirizzamento a `/dashboard`.
+
+Sviluppo: `npm run dev:landing` (porta 3001). Build: `npm run build:landing`.
+
+Prezzi proposti (IVA esclusa): Starter 19 €/mese, Studio 49 €/mese e Agency 99 €/mese. Con fatturazione annuale proposta: rispettivamente 15, 39 e 79 €/mese, per un totale di 180, 468 e 948 €/anno. Quantità di progetti e ambienti sono indicative: non sono stati implementati pagamenti, abbonamenti o limiti applicativi. I pulsanti dei piani aprono l’accesso esistente senza avviare acquisti.
+
+I prezzi sono posizionati sotto le offerte iniziali di [Marker.io](https://marker.io/pricing) e [BugHerd](https://bugherd.com/pricing), consultate il 2 novembre 2026; il confronto è indicativo perché valute e funzionalità differiscono. Testi e struttura sono in `apps/landing/app/page.tsx`; demo e listino in `apps/landing/components/marketing/landing-interactions.tsx`; stili isolati in `landing.module.css` nella stessa cartella.
+
+### Deploy separato su Vercel
+
+1. In Vercel scegliere **Add New → Project** e importare nuovamente lo stesso repository GitHub.
+2. Nome suggerito: `reporty-site`. Framework: **Next.js**. Root Directory: **`apps/landing`**.
+3. Abilitare **Include source files outside of the Root Directory in the Build Step** per i componenti di `packages/shared`.
+4. Usare i comandi automatici di Vercel (Build `npm run build`, Output `.next`); l’installazione usa il `package-lock.json` della root del monorepo.
+5. Non servono variabili Supabase. Impostare facoltativamente `NEXT_PUBLIC_DASHBOARD_URL` solo se cambia l’origine della dashboard.
+6. Eseguire **Deploy**. Per un dominio proprio, aprire **Settings → Domains** nel nuovo progetto e seguire i record DNS indicati da Vercel.
+
+Il progetto Vercel esistente della dashboard mantiene Root Directory `apps/web`. Non sono necessari aggiornamenti del database o dell’estensione. Le modifiche devono essere presenti nel repository remoto prima dell’importazione; commit e push richiedono autorizzazione separata.
 
 ## Logo
 
