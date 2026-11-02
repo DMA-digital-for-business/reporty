@@ -189,8 +189,8 @@ export function ReportList({ projectId, initialView, environments, participants,
     ...(view === 'list' ? [{ label: 'Stato', options: Object.entries(labels).map(([value, label]) => ({ value, label })), selected: filter, onChange: setFilter }] : []),
     { label: 'Priorità', options: (['high', 'medium', 'low'] as const).map(value => ({ value, label: priorityLabels[value] })), selected: priority, onChange: setPriority },
     { label: 'Ambienti', options: environments.map(item => ({ value: item.id, label: item.name })), selected: environment, onChange: values => { setEnvironment(values); setPage([]); } },
-    { label: 'Pagine', options: pages.map(path => ({ value: path, label: path })), selected: page, onChange: setPage },
-    { label: 'Utente', options: participants.map(person => ({ value: person.key, label: `${person.name} · ${person.kind === 'guest' ? 'Guest' : 'Sviluppatore'}` })), selected: users, onChange: setUsers },
+    { label: 'Pagine', searchable: true, options: pages.map(path => ({ value: path, label: path })), selected: page, onChange: setPage },
+    { label: 'Utente', searchable: true, options: participants.map(person => ({ value: person.key, label: `${person.name} · ${person.kind === 'guest' ? 'Guest' : 'Sviluppatore'}` })), selected: users, onChange: setUsers },
   ];
   async function loadThread(environmentId: string, id: string) {
     setThreadLoading(true);

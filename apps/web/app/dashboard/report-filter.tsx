@@ -1,17 +1,12 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ReportFilterOptions, type ReportFilterOptionsProps } from './report-filter-options';
 import { Popover } from '@base-ui/react/popover';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export function ReportFilter({ label, options, selected, onChange }: {
-  label: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onChange: (selected: string[]) => void;
-}) {
+export function ReportFilter({ label, options, selected, onChange, searchable }: ReportFilterOptionsProps) {
   const trigger = useRef<HTMLButtonElement>(null);
   const [container, setContainer] = useState<HTMLElement | ShadowRoot | null>(null);
   const summary = selected.length ? options.filter(option => selected.includes(option.value)).map(option => option.label).join(', ') : 'Tutti';
@@ -20,12 +15,7 @@ export function ReportFilter({ label, options, selected, onChange }: {
       <span className="max-w-52 truncate">{label}</span><ChevronDown aria-hidden="true" className="size-4" />
     </Popover.Trigger>
     <Popover.Portal container={container}><Popover.Positioner sideOffset={8} className="pointer-events-auto z-[100]"><Popover.Popup className="w-72 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg outline-none">
-      <fieldset aria-label={label}>
-        <div className="max-h-64 space-y-1 overflow-y-auto">{options.map(option => <label key={option.value} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 text-sm transition-colors hover:bg-primary/10 hover:text-primary">
-          <Checkbox checked={selected.includes(option.value)} onCheckedChange={checked => onChange(checked ? [...selected, option.value] : selected.filter(value => value !== option.value))} />
-          <span className="break-all">{option.label}</span>
-        </label>)}{!options.length ? <p className="p-2 text-sm text-muted-foreground">Nessuna opzione disponibile.</p> : null}</div>
-      </fieldset>
+      <ReportFilterOptions label={label} options={options} selected={selected} onChange={onChange} searchable={searchable} />
     </Popover.Popup></Popover.Positioner></Popover.Portal>
   </Popover.Root>;
 }
