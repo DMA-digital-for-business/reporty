@@ -27,6 +27,8 @@
     "build:landing": "npm run build --workspace=@reporty/landing"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8"
+    "@electric-sql/pglite": "^0.5.8",
+    "@tailwindcss/vite": "^4.3.3",
+    "vite": "^8.3.2"
   }
 }
