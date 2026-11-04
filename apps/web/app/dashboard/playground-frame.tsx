@@ -11,13 +11,14 @@ import { useToastManager } from '@/components/ui/toast';
 import { capturePlaygroundFrame, hasPlaygroundCapture, subscribePlaygroundCapture } from '@/lib/playground-capture';
 import { isPlaygroundMessage, playgroundFrameLayout, playgroundUrl, type PlaygroundEnvironment, type Viewport } from '@/lib/playground';
 
-export function PlaygroundFrame({ environment, url, viewport, active, reload, requestedReport, onPage, fitWidth, fullscreen, onExitFullscreen, onSelectReport, reportsRevision = 0 }: {
+export function PlaygroundFrame({ environment, url, viewport, active, reload, requestedReport, onPage, fitWidth, fullscreen, onExitFullscreen, onSelectReport, reportsRevision = 0, pinSelection }: {
   fitWidth: boolean; fullscreen: boolean; onExitFullscreen: () => void;
   environment: PlaygroundEnvironment; url: string; viewport: Viewport; active: boolean; reload: number;
   requestedReport?: { id: string; requestId: string };
   onPage: (url: string, connected: boolean) => void;
   onSelectReport: (id: string) => void;
   reportsRevision?: number;
+  pinSelection: { pagePath: string; ids: string[] };
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -42,10 +43,12 @@ export function PlaygroundFrame({ environment, url, viewport, active, reload, re
   const post = useCallback((data: Record<string, unknown>) => {
     frame.current?.contentWindow?.postMessage({ ...data, nonce }, environment.origin);
   }, [environment.origin, nonce]);
+  const currentPinSelection = useRef(pinSelection);
   const sendConnection = useCallback(() => {
-    post({ type: 'REPORTY_PLAYGROUND_CONNECT', key: environment.publicKey, externalDetails: true, active: active && isPageActive() });
+    post({ type: 'REPORTY_PLAYGROUND_CONNECT', key: environment.publicKey, externalDetails: true, pinSelection: currentPinSelection.current, active: active && isPageActive() });
   }, [post, environment.publicKey, active]);
-  useEffect(() => { sendConnection(); }, [pageActive, sendConnection]);
+  const pinSelectionKey = JSON.stringify(pinSelection);
+  useEffect(() => { currentPinSelection.current = JSON.parse(pinSelectionKey); sendConnection(); }, [pageActive, sendConnection, pinSelectionKey]);
   function cancelCapture(message: string) {
     if (capture) generation.current++;
     if (capture) post({ type: 'REPORTY_PLAYGROUND_CAPTURE_RESULT', requestId: capture.requestId, error: message });

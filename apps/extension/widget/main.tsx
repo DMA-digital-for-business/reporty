@@ -1,5 +1,5 @@
 import { initializeTheme } from '@/lib/theme';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ReviewOverlay } from '@/components/review-overlay';
 import { ToastProvider, useNotify } from '@/components/ui/toast';
@@ -42,9 +42,12 @@ function saveToken(value: string) {
 const host=document.createElement('div');
 host.id='reporty-widget';
 const playground = key && api ? createPlaygroundBridge(api, key, window, setEmbeddedPageActive) : null;
+const subscribePins = playground?.subscribePins ?? (() => () => {});
+const getPinSelection = playground?.getPinSelection ?? (() => null);
 window.addEventListener('pagehide', event => { if (!event.persisted) playground?.dispose(); });
 
 function Widget() {
+  const pinSelection = useSyncExternalStore(subscribePins, getPinSelection);
   const pageActive = usePageActive();
   const [requestedReport, setRequestedReport] = useState<PlaygroundSelection>();
   const [reportsRevision, setReportsRevision] = useState(0);
@@ -114,7 +117,7 @@ function Widget() {
     return result;
   }
   if(!config?.enabled)return null;
-  if(token)return <ReviewOverlay host={host} site={{environmentId:config.environment.id,position,hidden}} onHiddenChange={changeHidden} onPositionChange={changePosition} environment={config.environment} transport={transport} logoUrl={`${api}/brand/reporty-symbol.svg`} requestedReport={requestedReport} reportsRevision={reportsRevision} onOpenReport={playground?.openReport} captureScreenshot={playground?.captureScreenshot} />;
+  if(token)return <ReviewOverlay host={host} site={{environmentId:config.environment.id,position,hidden}} onHiddenChange={changeHidden} onPositionChange={changePosition} environment={config.environment} transport={transport} logoUrl={`${api}/brand/reporty-symbol.svg`} requestedReport={requestedReport} reportsRevision={reportsRevision} pinSelection={pinSelection} onOpenReport={playground?.openReport} captureScreenshot={playground?.captureScreenshot} />;
   const top = position.startsWith('top'), left = position.endsWith('left');
   return <div role={sessionStarting ? 'status' : undefined} aria-label={sessionStarting ? 'Caricamento pannello segnalazioni' : undefined} style={{ [top ? 'top' : 'bottom']: 24, [left ? 'left' : 'right']: 24 }} className="pointer-events-auto fixed flex items-center gap-1 rounded-full border bg-background p-1.5 shadow-xl">{sessionStarting ? <><Skeleton className="size-9 rounded-lg" /><Skeleton className="size-10 rounded-full" /></> : <Button size="icon" variant="ghost" aria-label="Riprova ad aprire le segnalazioni" onClick={() => setSessionAttempt(value => value + 1)}><Menu className="size-5" /></Button>}</div>;
 }

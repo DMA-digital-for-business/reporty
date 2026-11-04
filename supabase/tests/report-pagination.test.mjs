@@ -38,7 +38,7 @@ for (const migration of [false, true]) test(`report pages: ${migration ? 'increm
     for (let index=0;index<65;index++) {
       await db.query(`insert into public.issues(id,project_id,environment_id,page_path,body,author_id,context,status,priority,created_at)
         values($1,$2,$3,$4,$5,$6,$7,$8,$9,'2026-01-01'::timestamptz + $10 * interval '1 second')`,
-      [ids[index],project,index<60?env:env2,index%2?'/catalog':'/about',index===59?'needle special':`Report ${index}`,developer,context,index<50?'open':'resolved',index%3?'medium':'high',index]);
+      [ids[index],project,index<60?env:env2,index%2?'/catalog':'/about',index===59?`${'x'.repeat(300)} needle special`:`Report ${index}`,developer,context,index<50?'open':'resolved',index%3?'medium':'high',index]);
     }
     await db.query("insert into public.issues(project_id,environment_id,page_path,body,author_id,context) values($1,$2,'/','Other project',$3,$4)",[otherProject,otherEnv,developer,context]);
     await as(developer);
@@ -76,6 +76,17 @@ for (const migration of [false, true]) test(`report pages: ${migration ? 'increm
     const pinList = await pins();
     assert.equal(pinList.length,30); assert.equal(pinList[0].project_id,undefined); assert.equal(pinList[0].screenshot_path,undefined);
     assert.equal(pinList[0].context.viewport,undefined);
+    // Playground pins share the dashboard filters, across every sidebar page.
+    const pinFilters = { ...query, selectionOnly: true, limit: 1, offset: 1000, environments: [env], pages: ['/catalog'], statuses: ['open'] };
+    const openPins = await page(pinFilters);
+    assert.equal(openPins.reports.length, 25);
+    assert.deepEqual(new Set(openPins.reports.map(report => report.id)), new Set(ids.filter((_, index) => index < 50 && index % 2)));
+    assert.deepEqual((await page({ ...pinFilters, priorities: ['low'] })).reports, []);
+    const searchedPins = await page({ ...pinFilters, statuses: ['resolved'], priorities: ['medium'], search: 'NEEDLE' });
+    assert.deepEqual(searchedPins.reports.map(report => report.id), [ids[59]]);
+    assert.ok(!pinList.find(report => report.id === ids[59]).body.includes('needle'), 'pin preview is abbreviated; selection searches the full body');
+    assert.deepEqual((await page({ ...pinFilters, pages: ['/catalog#/other'] })).reports, []);
+    assert.deepEqual((await page({ ...pinFilters, environments: [env2], search: 'NEEDLE', statuses: [] })).reports, []);
     const link = (await db.query('select token from public.environment_review_links where environment_id=$1',[env])).rows[0].token;
     const widget = (await db.query('select public_key from public.environment_widgets where environment_id=$1',[env])).rows[0].public_key;
     await db.query('update public.environment_widgets set enabled=true where environment_id=$1',[env]);

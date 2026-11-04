@@ -43,11 +43,13 @@ function PlaygroundReportsSkeleton() {
   </div>;
 }
 
-export function PlaygroundReports({ environment, pagePath, onSelectReport, connected }: {
+export function PlaygroundReports({ environment, pagePath, onSelectReport, connected, onPinSelection, reportsRevision }: {
   environment: { id: string; name: string; origin: string };
   pagePath: string;
   onSelectReport: (id: string) => void;
   connected: boolean;
+  onPinSelection: (pagePath: string, ids: string[]) => void;
+  reportsRevision: number;
 }) {
   const toast = useToastManager();
   const [searchInput, setSearchInput] = useState('');
@@ -63,25 +65,35 @@ export function PlaygroundReports({ environment, pagePath, onSelectReport, conne
     environments: [environment.id],
     pages: [pagePath],
   }), [environment.id, pagePath]);
-  const feed = useReportPage({
-    offset: (page - 1) * REPORT_PAGE_SIZE,
-    limit: REPORT_PAGE_SIZE,
+  const filters: ReportPageQuery = {
     search,
     statuses: statuses as Report['status'][],
     priorities: priorities as Report['priority'][],
     environments: [environment.id],
     pages: [pagePath],
     sort: { field: 'priority', direction: 'asc' },
-  }, load, {
+  };
+  const feed = useReportPage({ ...filters, offset: (page - 1) * REPORT_PAGE_SIZE, limit: REPORT_PAGE_SIZE }, load, {
     scope: JSON.stringify([environment.id, pagePath]),
+    revision: reportsRevision,
     onError: message => toast.add({ title: 'Caricamento non riuscito', description: message, type: 'error' }),
   });
+  // selectionOnly returns every matching ID, independently of sidebar pagination.
+  // Search runs on the complete report body, not the abbreviated pin preview.
+  const pins = useReportPage({ ...filters, selectionOnly: true, limit: 1 }, load, {
+    scope: JSON.stringify([environment.id, pagePath]),
+    revision: reportsRevision,
+    onError: message => toast.add({ title: 'Aggiornamento pin non riuscito', description: message, type: 'error' }),
+  });
+  const pinIds = JSON.stringify(pins.reports.map(report => report.id));
+  const notifyPins = useEffectEvent(onPinSelection);
+  useEffect(() => { notifyPins(pagePath, JSON.parse(pinIds) as string[]); }, [pagePath, pinIds]);
   const pages = Math.max(1, Math.ceil(feed.total / REPORT_PAGE_SIZE));
   if (!feed.loading && !feed.failed && page > pages) setSelection({ key: filterKey, page: pages });
 
   const refresh = useEffectEvent(async () => {
     if (searchInput !== search) return;
-    await feed.poll();
+    await Promise.all([feed.poll(), pins.poll()]);
   });
   useEffect(() => startNotificationPolling(() => refresh()), []);
 
@@ -109,7 +121,7 @@ export function PlaygroundReports({ environment, pagePath, onSelectReport, conne
     <div className="min-h-0 flex-1 overflow-y-auto" aria-busy={feed.loading}>
       {feed.loading ? <PlaygroundReportsSkeleton /> : feed.failed ? <div className="space-y-3 rounded-xl border p-4">
         <p className="text-sm text-muted-foreground">Le segnalazioni della pagina non sono disponibili.</p>
-        <Button variant="outline" size="sm" onClick={feed.refresh}>Riprova</Button>
+        <Button variant="outline" size="sm" onClick={() => { feed.refresh(); pins.refresh(); }}>Riprova</Button>
       </div> : feed.reports.length ? <ul className="space-y-3">
         {feed.reports.map(report => <li key={report.id}>
           <button type="button" onClick={() => onSelectReport(report.id)} aria-label={`Apri segnalazione: ${report.body}`} className="w-full space-y-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">

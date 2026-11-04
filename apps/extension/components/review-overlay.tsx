@@ -43,6 +43,7 @@ import { elementAnchor, anchorPosition } from '@/lib/anchor';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { anchorPosition as locate } from '@/lib/anchor';
+import type { PlaygroundPinSelection } from '@/lib/playground-bridge';
 import { pinPreviewLayout } from '@/lib/pin-preview';
 import { useReviewerIdentity } from '@/components/reviewer-identity';
 import { createReportFieldUpdates, type ReportFieldChange } from '@/lib/report-field-updates';
@@ -89,7 +90,7 @@ function ExpandingPin({ children, anchorX, anchorY, ...props }: React.ButtonHTML
 type DraftScreenshot = ScreenshotImage & { id: string };
 type Draft = { id: string; context: ReportContext; screenshots: DraftScreenshot[]; files: DraftReportFile[]; body: string; priority: ReportPriority; saved?: boolean; uploaded?: string[] };
 
-export function ReviewOverlay({ site, environment, host, transport, logoUrl, onPositionChange, onHiddenChange, captureScreenshot: captureOverride, requestedReport, onOpenReport, reportsRevision, mediaEnabled = true, openCreatedReport = false, creationRequest, onSelectionChange }: { site: Site; environment: Environment; host: HTMLElement; onPositionChange: (position: Site['position']) => Promise<void>; onHiddenChange: (hidden: boolean) => Promise<void>; transport?: (body: Record<string, unknown>) => Promise<unknown>; logoUrl?: string; captureScreenshot?: () => Promise<string>; requestedReport?: { id: string; requestId: string; focusOnly?: boolean }; onOpenReport?: (id: string) => boolean; reportsRevision?: number; mediaEnabled?: boolean; openCreatedReport?: boolean; creationRequest?: string; onSelectionChange?: (active: boolean) => void }) {
+export function ReviewOverlay({ site, environment, host, transport, logoUrl, onPositionChange, onHiddenChange, captureScreenshot: captureOverride, requestedReport, onOpenReport, reportsRevision, pinSelection, mediaEnabled = true, openCreatedReport = false, creationRequest, onSelectionChange }: { site: Site; environment: Environment; host: HTMLElement; onPositionChange: (position: Site['position']) => Promise<void>; onHiddenChange: (hidden: boolean) => Promise<void>; transport?: (body: Record<string, unknown>) => Promise<unknown>; logoUrl?: string; captureScreenshot?: () => Promise<string>; requestedReport?: { id: string; requestId: string; focusOnly?: boolean }; onOpenReport?: (id: string) => boolean; reportsRevision?: number; pinSelection?: PlaygroundPinSelection | null; mediaEnabled?: boolean; openCreatedReport?: boolean; creationRequest?: string; onSelectionChange?: (active: boolean) => void }) {
   const [fieldUpdates] = useState(createReportFieldUpdates);
   useEffect(() => () => stopTabCapture(), [environment.id, captureOverride]);
   const rawMessage = async (body: Record<string, unknown>) => (transport ? await transport(body) : await extensionMessage(body)) as Awaited<ReturnType<typeof extensionMessage>>;
@@ -457,6 +458,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     if (!modalOpen && modal.current?.open) modal.current?.close();
   }, [modalOpen]);
   useEffect(() => () => { modal.current?.close(); }, []);
+  const pinIds = pinSelection ? new Set(pinSelection.ids) : null;
   const pageReports = reports.filter(report => report.page_path === page.pagePath).map(report => fieldUpdates.project(report));
   const filtered = listFeed.reports.map(report => fieldUpdates.project(report));
   const paginated = filtered;
@@ -482,7 +484,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     {nameDialog}
     {hover && mode ? <div className="pointer-events-none fixed border-2 border-indigo-500 bg-indigo-500/10" style={{ left: hover.left, top: hover.top, width: hover.width, height: hover.height }} /> : null}
     {mode ? <div className="pointer-events-auto fixed left-1/2 top-4 -translate-x-1/2 rounded-lg border bg-card p-3 text-sm shadow-xl">{mode === 'element' ? 'Seleziona un elemento' : 'Posiziona un pin'} · Esc per annullare <Button size="sm" variant="outline" onClick={() => { setMode(null); setOpen(true); }}>Annulla</Button></div> : null}
-    {!mode && !draft && pinsVisible && !hideReporty ? pageReports.filter(report => showResolved || report.status !== 'resolved').map(report => {
+    {!mode && !draft && pinsVisible && !hideReporty ? pageReports.filter(report => pinSelection ? pinSelection.pagePath === page.pagePath && pinIds!.has(report.id) : showResolved || report.status !== 'resolved').map(report => {
       const position = anchorPosition(report.context.anchor);
       if (!position) return null;
       return <div key={report.id} className={`group pointer-events-auto fixed -translate-y-full focus-within:z-20 hover:z-30 ${highlighted === report.id ? 'z-20' : ''}`} style={{left:position.x,top:position.y}}>

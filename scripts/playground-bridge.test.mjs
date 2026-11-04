@@ -125,6 +125,50 @@ test('focus-only selections and refreshes keep the same trusted channel checks',
   assert.equal(refreshes, 1);
 });
 
+test('pin filters require the trusted dashboard handshake and retain a stable snapshot across heartbeats', t => {
+  const s = setup(t);
+  const pinSelection = { pagePath: '/page#/route', ids: [id] };
+  const connect = { type: 'REPORTY_PLAYGROUND_CONNECT', nonce, key, externalDetails: true, pinSelection };
+  let changes = 0;
+  const unsubscribe = s.bridge.subscribePins(() => changes++);
+  s.emit(connect, { source: {} });
+  s.emit(connect, { origin: 'https://evil.example' });
+  s.emit({ ...connect, key: 'other' });
+  s.emit({ ...connect, nonce: 'invalid' });
+  assert.equal(s.bridge.getPinSelection(), null);
+  s.emit(connect);
+  const snapshot = s.bridge.getPinSelection();
+  assert.deepEqual(snapshot, pinSelection);
+  assert.equal(changes, 1);
+  s.emit({ ...connect, pinSelection: structuredClone(pinSelection) });
+  assert.equal(s.bridge.getPinSelection(), snapshot);
+  assert.equal(changes, 1);
+  s.emit({ ...connect, pinSelection: { pagePath: '/next', ids: [] } });
+  assert.deepEqual(s.bridge.getPinSelection(), { pagePath: '/next', ids: [] });
+  assert.equal(changes, 2);
+  unsubscribe();
+  s.emit(connect);
+  assert.equal(changes, 2);
+});
+
+test('pin filters reject malformed payloads and reset when leaving the playground session', t => {
+  const s = setup(t);
+  const pinSelection = { pagePath: '/page', ids: [id] };
+  for (const malformed of [null, {}, { pagePath: 42, ids: [id] }, { pagePath: '/'.repeat(8193), ids: [] }, { pagePath: '/', ids: ['invalid'] }, { pagePath: '/', ids: 'all' }]) {
+    s.connect({ externalDetails: true, pinSelection: malformed });
+    assert.equal(s.bridge.getPinSelection(), null);
+  }
+  s.connect({ externalDetails: true, pinSelection });
+  s.connect({ externalDetails: false, pinSelection });
+  assert.equal(s.bridge.getPinSelection(), null);
+  s.connect({ externalDetails: true, pinSelection });
+  s.connect({ nonce: id });
+  assert.equal(s.bridge.getPinSelection(), null);
+  s.connect({ externalDetails: true, pinSelection });
+  s.bridge.dispose();
+  assert.equal(s.bridge.getPinSelection(), null);
+});
+
 test('capture matches request and nonce, validates image and refuses stale navigation', async t => {
   const s = setup(t);
   await assert.rejects(s.bridge.captureScreenshot(), /Collegamento/);

@@ -1,6 +1,7 @@
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type PlaygroundSelection = { id: string; requestId: string; focusOnly?: boolean };
+export type PlaygroundPinSelection = { pagePath: string; ids: string[] };
 
 /** Carries page metadata only; authentication remains in the widget transport. */
 export function createPlaygroundBridge(apiOrigin: string, key: string, target: Window = window, onActivity: (active: boolean | null) => void = () => {}) {
@@ -13,6 +14,22 @@ export function createPlaygroundBridge(apiOrigin: string, key: string, target: W
   let activityTimer: ReturnType<typeof setTimeout> | undefined;
   const selections = new Set<(selection: PlaygroundSelection) => void>();
   const refreshListeners = new Set<() => void>();
+  const pinListeners = new Set<() => void>();
+  let pinSelection: PlaygroundPinSelection | null = null;
+  let pinSelectionKey = 'null';
+  function updatePinSelection(value: unknown) {
+    let next: PlaygroundPinSelection | null = null;
+    if (value && typeof value === 'object' && 'pagePath' in value && 'ids' in value
+      && typeof value.pagePath === 'string' && value.pagePath.length <= 8192
+      && Array.isArray(value.ids) && value.ids.every(id => typeof id === 'string' && uuid.test(id))) {
+      next = { pagePath: value.pagePath, ids: value.ids };
+    }
+    const nextKey = JSON.stringify(next);
+    if (nextKey === pinSelectionKey) return;
+    pinSelection = next;
+    pinSelectionKey = nextKey;
+    pinListeners.forEach(listener => listener());
+  }
   const pending = new Map<string, { url: string; resolve: (image: string) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   function post(message: Record<string, unknown>) {
     target.parent.postMessage({ ...message, nonce }, apiOrigin);
@@ -46,6 +63,7 @@ export function createPlaygroundBridge(apiOrigin: string, key: string, target: W
         activityTimer = setTimeout(() => onActivity(false), 3000);
       }
       externalDetails = data.externalDetails === true;
+      updatePinSelection(externalDetails ? data.pinSelection : null);
       publish(true);
       return;
     }
@@ -81,6 +99,11 @@ export function createPlaygroundBridge(apiOrigin: string, key: string, target: W
       refreshListeners.add(listener);
       return () => { refreshListeners.delete(listener); };
     },
+    getPinSelection: () => pinSelection,
+    subscribePins(listener: () => void) {
+      pinListeners.add(listener);
+      return () => { pinListeners.delete(listener); };
+    },
     openReport(id: string) {
       if (disposed || !nonce || !enabled || !externalDetails || !uuid.test(id)) return false;
       publish(true);
@@ -107,6 +130,8 @@ export function createPlaygroundBridge(apiOrigin: string, key: string, target: W
       target.removeEventListener('message', receive);
       selections.clear();
       refreshListeners.clear();
+      updatePinSelection(null);
+      pinListeners.clear();
       cancelCaptures('Playground chiuso.');
     },
   };
