@@ -143,11 +143,12 @@ begin
     left join public.guest_sessions g on g.id=guest where i.id=new.id;
   insert into public.notifications(issue_id,user_id,previous_status,status,actor_name,kind)
     select new.id,u.id,previous,new.status,label,event_kind from auth.users u
-    where not coalesce((to_jsonb(u)->>'is_anonymous')::boolean,false);
+    where not coalesce((to_jsonb(u)->>'is_anonymous')::boolean,false)
+      and u.id is distinct from actor;
   insert into public.notifications(issue_id,guest_session_id,previous_status,status,actor_name,kind)
     select new.id,g.id,previous,new.status,label,event_kind from public.guest_sessions g
     join public.guest_invites v on v.id=g.invite_id and v.revoked_at is null
-    where g.project_id=new.project_id;
+    where g.project_id=new.project_id and g.id is distinct from guest;
   return new;
 end;
 $$;
@@ -166,11 +167,12 @@ begin
     left join public.guest_sessions g on g.id=new.guest_session_id where c.id=new.id;
   insert into public.notifications(issue_id,user_id,kind,comment_id,status,actor_name)
     select report.id,u.id,'reply',new.id,report.status,label from auth.users u
-    where not coalesce((to_jsonb(u)->>'is_anonymous')::boolean,false);
+    where not coalesce((to_jsonb(u)->>'is_anonymous')::boolean,false)
+      and u.id is distinct from new.author_id;
   insert into public.notifications(issue_id,guest_session_id,kind,comment_id,status,actor_name)
     select report.id,g.id,'reply',new.id,report.status,label from public.guest_sessions g
     join public.guest_invites v on v.id=g.invite_id and v.revoked_at is null
-    where g.project_id=report.project_id;
+    where g.project_id=report.project_id and g.id is distinct from new.guest_session_id;
   return new;
 end;
 $$;

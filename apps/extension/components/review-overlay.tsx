@@ -45,6 +45,7 @@ import { Label } from '@/components/ui/label';
 import { anchorPosition as locate } from '@/lib/anchor';
 import { pinPreviewLayout } from '@/lib/pin-preview';
 import { useReviewerIdentity } from '@/components/reviewer-identity';
+import { createReportFieldUpdates, type ReportFieldChange } from '@/lib/report-field-updates';
 
 async function extensionMessage(body: object) {
   const response = await browser.runtime.sendMessage(body);
@@ -89,6 +90,7 @@ type DraftScreenshot = ScreenshotImage & { id: string };
 type Draft = { id: string; context: ReportContext; screenshots: DraftScreenshot[]; files: DraftReportFile[]; body: string; priority: ReportPriority; saved?: boolean; uploaded?: string[] };
 
 export function ReviewOverlay({ site, environment, host, transport, logoUrl, onPositionChange, onHiddenChange, captureScreenshot: captureOverride, requestedReport, onOpenReport, reportsRevision, mediaEnabled = true, openCreatedReport = false, creationRequest, onSelectionChange }: { site: Site; environment: Environment; host: HTMLElement; onPositionChange: (position: Site['position']) => Promise<void>; onHiddenChange: (hidden: boolean) => Promise<void>; transport?: (body: Record<string, unknown>) => Promise<unknown>; logoUrl?: string; captureScreenshot?: () => Promise<string>; requestedReport?: { id: string; requestId: string; focusOnly?: boolean }; onOpenReport?: (id: string) => boolean; reportsRevision?: number; mediaEnabled?: boolean; openCreatedReport?: boolean; creationRequest?: string; onSelectionChange?: (active: boolean) => void }) {
+  const [fieldUpdates] = useState(createReportFieldUpdates);
   useEffect(() => () => stopTabCapture(), [environment.id, captureOverride]);
   const rawMessage = async (body: Record<string, unknown>) => (transport ? await transport(body) : await extensionMessage(body)) as Awaited<ReturnType<typeof extensionMessage>>;
   const { ensureIdentity, nameDialog, nameDialogOpen } = useReviewerIdentity(rawMessage, environment.id);
@@ -160,9 +162,9 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
         if (scope !== notificationScope.current) return;
         notificationFeed.applyRead(result.data as NotificationPage, item?.id);
         if (item && openReport) {
-          const [thread, listing] = await Promise.all([loadThread(item.issue_id), message({ type: 'REPORTY_REPORT', operation: 'page', payload: { pagePath: page.pagePath, id: item.issue_id, limit: 1 } })]);
+          const [thread, listing] = await Promise.all([loadThread(item.issue_id), fetchPage({ pagePath: page.pagePath, id: item.issue_id, limit: 1 })]);
           if (scope !== notificationScope.current) return;
-          const report = (listing.data as ReportPage).reports.find(entry => entry.id === item.issue_id);
+          const report = listing.reports.find(entry => entry.id === item.issue_id);
           if (!report) throw new Error('Segnalazione non disponibile.');
           if (report.environment_id !== environment.id || report.page_path !== page.pagePath) throw new Error('Segnalazione non disponibile in questa pagina.');
           setReports(items => items.some(entry => entry.id === report.id) ? items.map(entry => entry.id === report.id ? { ...entry, ...report } : entry) : [...items, report]);
@@ -196,7 +198,8 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
       for (const [id, owner] of pending) if (owner === issueId) { pending.delete(id); cleanupFile.current(issueId, id); }
     };
   }, [draft?.id]);
-  const [selected, setSelected] = useState<Report | null>(null);
+  const [selectedReport, setSelected] = useState<Report | null>(null);
+  const selected = selectedReport ? fieldUpdates.project(selectedReport) : null;
   const [highlighted, setHighlighted] = useState<string | null>(null);
   useEffect(() => {
     if (!highlighted) return;
@@ -218,8 +221,10 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
   const [pageSelection, setPageSelection] = useState({ key: filterKey, page: 1 });
   const pageNumber = pageSelection.key === filterKey ? pageSelection.page : 1;
   async function fetchPage(query: ReportPageQuery): Promise<ReportPage> {
+    const revision = fieldUpdates.revision;
     const result = await message({ type: 'REPORTY_REPORT', operation: 'page', payload: query });
-    return result.data;
+    const data = result.data as ReportPage;
+    return { ...data, reports: data.reports.map(report => fieldUpdates.project(report, revision)) };
   }
   const listFeed = useReportPage({ pagePath: page.pagePath, offset: (pageNumber - 1) * REPORT_PAGE_SIZE, limit: REPORT_PAGE_SIZE, search, statuses: statuses as Report['status'][], priorities: priorities as ReportPriority[], sort: order }, fetchPage, { scope: environment.id, enabled: !hideReporty, onError: message => setStatus(message) });
   const listLoading = listFeed.loading;
@@ -240,17 +245,21 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     try { return await captureHighlightedScreenshot(host, context, captureOverride ?? captureTab); } finally { setCapturing(false); }
   }
   const pinsRevision = useRef(0);
-  async function refresh() {
+  async function refresh(background = false) {
     if (hideReporty || !isPageActive()) return reports;
     const revision = ++pinsRevision.current;
     const scope = notificationScope.current;
-    setPinsLoading(true);
-    listFeed.refresh();
+    const readRevision = fieldUpdates.revision;
+    if (!background) { setPinsLoading(true); listFeed.refresh(); }
+    const listing = background ? listFeed.poll() : Promise.resolve();
     try {
       const result = await message({ type: 'REPORTY_REPORT', operation: 'pins', payload: { pagePath: page.pagePath } });
-      if (scope === notificationScope.current && revision === pinsRevision.current) setReports(result.data);
+      if (scope === notificationScope.current && revision === pinsRevision.current) setReports((result.data as ReportPin[]).map(report => fieldUpdates.project(report, readRevision)));
       return result.data as ReportPin[];
-    } finally { if (scope === notificationScope.current && revision === pinsRevision.current) setPinsLoading(false); }
+    } finally {
+      await listing;
+      if (scope === notificationScope.current && revision === pinsRevision.current) setPinsLoading(false);
+    }
   }
   async function run(work: () => Promise<void>) {
     setBusy(true); setStatus('');
@@ -269,28 +278,39 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
       } finally { positionLock.current = false; }
     });
   }
-  const updateLock = useRef(false);
+  const fieldUpdateUI = useRef<(change: ReportFieldChange) => void>(() => {});
+  fieldUpdateUI.current = change => {
+    setReports(items => items.map(item => item.id === change.id ? { ...item, ...change } : item));
+    setSelected(item => item?.id === change.id ? { ...item, ...change } : item);
+    if (!listFeed.loading && listFeed.reports.some(item => item.id === change.id)) listFeed.patchReport(change);
+  };
+  const fieldRefreshQueue = useRef(Promise.resolve());
+  const fieldUpdateRefresh = useRef<(id: string) => Promise<void>>(async () => {});
+  fieldUpdateRefresh.current = async id => {
+    const scope = notificationScope.current;
+    await Promise.allSettled([refresh(true), fetchPage({ id, limit: 1, pagePath: page.pagePath }).then(result => {
+      if (scope === notificationScope.current) setSelected(item => item?.id === id ? result.reports[0] ?? item : item);
+    })]);
+  };
   function updateReportField(field: 'status' | 'priority', value: string) {
-    if (!selected || busy || updateLock.current || !selected.canChangeStatus || selected[field] === value) return;
+    if (!selected || busy || !selected.canChangeStatus || selected[field] === value) return;
     const previous = selected;
-    const patch = { [field]: value } as Partial<Report>;
-    updateLock.current = true;
-    setReports(items => items.map(item => item.id === previous.id ? { ...item, ...patch } : item));
-    setSelected(item => item?.id === previous.id ? { ...item, ...patch } : item);
-    void run(async () => {
-      try {
-        await message({ type: 'REPORTY_REPORT', operation: field, payload: { id: previous.id, [field]: value } });
+    const scope = notificationScope.current;
+    void fieldUpdates.update(previous, field, value as Report['status' | 'priority'], async () => {
+      await message({ type: 'REPORTY_REPORT', operation: field, payload: { id: previous.id, [field]: value } });
+    }, change => fieldUpdateUI.current(change)).then(() => {
+      if (scope === notificationScope.current && !fieldUpdates.hasPending(previous.id)) {
         setStatus(field === 'status' ? 'Stato aggiornato.' : 'Priorità aggiornata.', 'success');
-        try {
-          await refresh();
-          const result = await fetchPage({ id: previous.id, limit: 1, pagePath: page.pagePath });
-          setSelected(item => item?.id === previous.id ? result.reports[0] ?? item : item);
-        } catch { /* A confirmed mutation is not rolled back if reloading fails. */ }
-      } catch (error) {
-        setReports(items => items.map(item => item.id === previous.id ? { ...item, [field]: previous[field] } : item));
-        setSelected(item => item?.id === previous.id ? { ...item, [field]: previous[field] } : item);
-        throw error;
-      } finally { updateLock.current = false; }
+      }
+    }).catch(error => {
+      setStatus(error instanceof Error ? error.message : 'Operazione non riuscita.', 'error');
+    }).finally(() => {
+      if (scope === notificationScope.current && !fieldUpdates.hasPending(previous.id)) {
+        // Reconcile filters and ordering without replacing the UI with skeletons.
+        fieldRefreshQueue.current = fieldRefreshQueue.current.then(async () => {
+          if (scope === notificationScope.current) await fieldUpdateRefresh.current(previous.id);
+        }).catch(() => {});
+      }
     });
   }
   function focusReport(report: Report | ReportPin) {
@@ -437,8 +457,8 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     if (!modalOpen && modal.current?.open) modal.current?.close();
   }, [modalOpen]);
   useEffect(() => () => { modal.current?.close(); }, []);
-  const pageReports = reports.filter(report => report.page_path === page.pagePath);
-  const filtered = listFeed.reports;
+  const pageReports = reports.filter(report => report.page_path === page.pagePath).map(report => fieldUpdates.project(report));
+  const filtered = listFeed.reports.map(report => fieldUpdates.project(report));
   const paginated = filtered;
   const listRef = useRef<HTMLElement | null>(null);
   const filters = [
