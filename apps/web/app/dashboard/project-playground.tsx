@@ -53,7 +53,7 @@ function PlaygroundHeader({ projectName, hidden, children }: { projectName: stri
     <Dialog.Title className="min-w-0 max-w-56 shrink truncate text-sm font-semibold" title={`Playground · ${projectName}`}>Playground · {projectName}</Dialog.Title>
     <div className="min-w-0 flex-1">{children}</div>
     <StopScreenshotSharing compact />
-    <Dialog.Close render={<Button variant="outline" size="icon-sm" className="shrink-0" aria-label="Chiudi playground" />}><X aria-hidden="true" /></Dialog.Close>
+    <Dialog.Close render={<Button variant="outline" size="icon-sm" className="shrink-0 rounded-full" aria-label="Chiudi playground" />}><X aria-hidden="true" /></Dialog.Close>
   </header>;
 }
 
@@ -122,7 +122,7 @@ function EnvironmentPlayground({ projectName, initialReport, environment, fullsc
   }
   return <div className="flex min-h-0 flex-1 flex-col">
     <PlaygroundHeader projectName={projectName} hidden={fullscreen}>
-      {loading ? <div role="status" aria-label="Caricamento pagine del playground" className="flex gap-2 overflow-hidden"><Skeleton className="h-7 w-32 shrink-0" /><Skeleton className="size-7 shrink-0" /></div> : <div className="flex min-w-0 items-center gap-2"><Tabs.Root value={activeId} onValueChange={value => activateTab(String(value))} className="min-w-0">
+      {loading ? <div role="status" aria-label="Caricamento pagine del playground" className="flex gap-2 overflow-hidden"><Skeleton className="h-7 w-32 shrink-0" /><Skeleton className="size-7 shrink-0 rounded-full" /></div> : <div className="flex min-w-0 items-center gap-2"><Tabs.Root value={activeId} onValueChange={value => activateTab(String(value))} className="min-w-0">
           <Tabs.List aria-label="Pagine del playground" className="flex items-center gap-1 overflow-x-auto">
             {tabs.map(tab => <div key={tab.id} className="flex shrink-0 items-center rounded-lg border bg-background transition-colors duration-150 hover:border-primary/40 hover:bg-primary/5 focus-within:border-primary/40 motion-reduce:transition-none">
               <Tabs.Tab value={tab.id} className="h-7 max-w-52 truncate rounded-l-lg px-2 text-xs outline-none transition-colors duration-150 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring data-active:bg-primary/10 data-active:font-semibold data-active:text-primary data-active:hover:bg-primary/15 motion-reduce:transition-none" title={tab.url}>{getPageContext(tab.url).pagePath}</Tabs.Tab>
@@ -131,7 +131,7 @@ function EnvironmentPlayground({ projectName, initialReport, environment, fullsc
           </Tabs.List>
         </Tabs.Root>
         <Menu.Root>
-          <TooltipButton label="Apri una pagina dell’ambiente" size="icon-sm" className="shrink-0" disabled={failed || !availablePages.length} render={<Menu.Trigger />}><Plus aria-hidden="true" /></TooltipButton>
+          <TooltipButton label="Apri una pagina dell’ambiente" size="icon-sm" className="shrink-0 rounded-full" disabled={failed || !availablePages.length} render={<Menu.Trigger />}><Plus aria-hidden="true" /></TooltipButton>
           <Menu.Portal><Menu.Positioner sideOffset={8} align="start" className="z-[100]"><Menu.Popup aria-label="Pagine dell’ambiente" className="max-h-80 w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
             {availablePages.map(url => {
               const path = getPageContext(url).pagePath;
@@ -142,7 +142,7 @@ function EnvironmentPlayground({ projectName, initialReport, environment, fullsc
         </Menu.Root>
       </div>}
     </PlaygroundHeader>
-    {(!environment.enabled || !environment.publicKey) && !fullscreen ? <p className="border-b bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">Per usare pin, creazione e dettagli, installa lo script Reporty sul sito e abilitalo nella tab Ambienti.</p> : null}
+    {(!environment.enabled || !environment.publicKey) && !fullscreen ? <p className="border-b bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:bg-report-warning/10 dark:text-report-warning">Per usare pin, creazione e dettagli, installa lo script Reporty sul sito e abilitalo nella tab Ambienti.</p> : null}
     {loading ? <div role="status" aria-label="Caricamento playground" className="flex min-h-0 flex-1 gap-4 p-4"><div className="w-72 shrink-0 space-y-4"><Skeleton className="h-9 w-full" />{[0,1,2].map(i => <Skeleton key={i} className="h-28 w-full" />)}</div><Skeleton className="h-full flex-1" /></div> : <>
       {failed ? <div className="flex items-center gap-3 p-4"><p className="text-sm">Impossibile caricare le pagine.</p><Button variant="outline" onClick={() => { setLoading(true); setAttempt(value => value + 1); }}>Riprova</Button></div> : null}
       {active ? <ViewportToolbar key={active.id} tab={active} hidden={fullscreen} sidebar={sidebar} sidebarId={sidebarId} onSidebar={setSidebar} fullscreenTrigger={fullscreenTrigger} onFullscreen={onFullscreen} onFitWidth={() => update(active.id, { fitWidth: !active.fitWidth })} onViewport={viewport => update(active.id, { viewport, fitWidth: false })} onReload={() => update(active.id, { src: active.url, reload: active.reload + 1, connected: false })} /> : null}

@@ -19,7 +19,7 @@ function date(value: string) { return new Date(value).toLocaleString('it-IT', { 
 function Usage({ used, limit }: { used: number | null; limit: number }) {
   const { percent, level } = quotaStatus(used, limit);
   return <div className="space-y-3"><p className="text-2xl font-semibold">{bytes(used)} <span className="text-sm font-normal text-muted-foreground">/ {bytes(limit)}</span></p>
-    {percent !== null ? <><Progress label="Utilizzo rispetto alla soglia Free" value={Math.min(100,percent)} valueText={`${percent.toFixed(1)}%`} indicatorClassName={level === 'exceeded' ? 'bg-destructive' : level === 'warning' ? 'bg-amber-500' : 'bg-primary'} /><Badge variant={level === 'exceeded' ? 'destructive' : 'secondary'}>{percent.toLocaleString('it-IT', { maximumFractionDigits: 1 })}% · {level === 'exceeded' ? 'Soglia raggiunta' : level === 'warning' ? 'Vicino alla soglia' : 'Entro la soglia'}</Badge></> : null}
+    {percent !== null ? <><Progress label="Utilizzo rispetto alla soglia Free" value={Math.min(100,percent)} valueText={`${percent.toFixed(1)}%`} indicatorClassName={level === 'exceeded' ? 'bg-destructive' : level === 'warning' ? 'bg-amber-500 dark:bg-report-warning' : 'bg-primary'} /><Badge variant={level === 'exceeded' ? 'destructive' : 'secondary'}>{percent.toLocaleString('it-IT', { maximumFractionDigits: 1 })}% · {level === 'exceeded' ? 'Soglia raggiunta' : level === 'warning' ? 'Vicino alla soglia' : 'Entro la soglia'}</Badge></> : null}
   </div>;
 }
 export default async function AuditPage() {

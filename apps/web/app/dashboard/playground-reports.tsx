@@ -1,5 +1,6 @@
 'use client';
 
+import { statusColors, priorityColors } from '@reporty/shared/ui/report-colors';
 import { useCallback, useEffect, useEffectEvent, useState } from 'react';
 import { Search } from 'lucide-react';
 import { priorityLabels, type Report, type ReportPageQuery } from '@reporty/shared';
@@ -18,17 +19,6 @@ import { getReportPage } from './report-actions';
 import { ReportFilter } from './report-filter';
 
 const statusLabels = { open: 'Aperta', in_progress: 'In lavorazione', validation: 'Validazione', resolved: 'Chiusa' };
-const statusColors = {
-  open: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
-  in_progress: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
-  validation: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
-  resolved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-};
-const priorityColors = {
-  low: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
-  medium: 'bg-amber-100 text-amber-800 dark:bg-orange-950 dark:text-orange-200',
-  high: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
-};
 const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({ value, label }));
 const priorityOptions = (['high', 'medium', 'low'] as const).map(value => ({ value, label: priorityLabels[value] }));
 
@@ -126,8 +116,8 @@ export function PlaygroundReports({ environment, pagePath, onSelectReport, conne
         {feed.reports.map(report => <li key={report.id}>
           <button type="button" onClick={() => onSelectReport(report.id)} aria-label={`Apri segnalazione: ${report.body}`} className="w-full space-y-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">
             <span className="flex flex-wrap gap-1.5">
-              <Badge className={`border-[color-mix(in_oklab,currentColor_25%,transparent)] ${statusColors[report.status]}`}><ReportIcon value={report.status} />{statusLabels[report.status]}</Badge>
-              <Badge className={`border-[color-mix(in_oklab,currentColor_25%,transparent)] ${priorityColors[report.priority ?? 'medium']}`}><ReportIcon value={report.priority ?? 'medium'} />{priorityLabels[report.priority ?? 'medium']}</Badge>
+              <Badge variant="tinted" className={statusColors[report.status]}><ReportIcon value={report.status} />{statusLabels[report.status]}</Badge>
+              <Badge variant="tinted" className={priorityColors[report.priority ?? 'medium']}><ReportIcon value={report.priority ?? 'medium'} />{priorityLabels[report.priority ?? 'medium']}</Badge>
             </span>
             <span className="line-clamp-3 whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{report.body}</span>
             <span className="block truncate text-xs text-muted-foreground">{report.authorName}</span>

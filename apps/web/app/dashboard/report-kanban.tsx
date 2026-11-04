@@ -1,5 +1,6 @@
 'use client';
 
+import { priorityColors, statusColors as colors } from '@reporty/shared/ui/report-colors';
 import { useEffect, useRef, useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { formatReportDateTime, priorityLabels, type Report } from '@reporty/shared';
@@ -15,8 +16,6 @@ const columns: { value: Status; label: string }[] = [
   { value: 'open', label: 'Aperta' }, { value: 'in_progress', label: 'In lavorazione' },
   { value: 'validation', label: 'Validazione' }, { value: 'resolved', label: 'Chiusa' },
 ];
-const colors = { open: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200', in_progress: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200', validation: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200', resolved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' };
-const priorityColors = { low: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200', medium: 'bg-amber-100 text-amber-800 dark:bg-orange-950 dark:text-orange-200', high: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' };
 
 type ColumnFeed = { total: number; loading: boolean; failed: boolean; loadMore: () => Promise<void>; refresh: () => void };
 
@@ -40,7 +39,7 @@ function InfiniteColumn({ children, total, visible, loading, failed, onLoadMore 
   return <div ref={root} className="max-h-[65vh] min-h-40 space-y-3 overflow-y-auto p-3">
     {children}
     {hasMore || loading || failed ? <div ref={sentinel} role="status" aria-label="Caricamento altre segnalazioni" className="min-h-px space-y-3">
-      {loading && !failed ? <div className="space-y-3 rounded-xl border bg-card p-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /><Skeleton className="h-5 w-16 rounded-full" /><div className="space-y-1"><Skeleton className="h-3 w-3/4" /><div className="flex items-center gap-2"><Skeleton className="h-3 w-1/3" /><Skeleton className="h-3 w-1/2" /></div></div></div> : null}
+      {loading && !failed ? <div className="space-y-3 rounded-xl border bg-card p-4 dark:border-neutral-600 dark:bg-neutral-800 dark:shadow-sm"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /><Skeleton className="h-5 w-16 rounded-full" /><div className="space-y-1"><Skeleton className="h-3 w-3/4" /><div className="flex items-center gap-2"><Skeleton className="h-3 w-1/3" /><Skeleton className="h-3 w-1/2" /></div></div></div> : null}
       {failed ? <Button variant="outline" className="w-full" onClick={onLoadMore}>Riprova il caricamento</Button> : null}
     </div> : null}
   </div>;
@@ -72,14 +71,14 @@ export function ReportKanban({ reports, columns: feeds, environments, busy, onOp
     <div className="grid grid-cols-4 items-start gap-4 overflow-x-auto pb-3" style={{ gridTemplateColumns: 'repeat(4, minmax(300px, 1fr))' }}>
       {columns.map(column => {
         const items = reports.filter(report => report.status === column.value);
-        return <section key={column.value} aria-label={`${column.label}: ${feeds[column.value].total} segnalazioni`} className={`min-w-0 rounded-xl border bg-muted/40 transition-colors ${target === column.value ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'}`}
+        return <section key={column.value} aria-label={`${column.label}: ${feeds[column.value].total} segnalazioni`} className={`min-w-0 rounded-xl border bg-muted/40 dark:bg-neutral-950 transition-colors ${target === column.value ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20' : 'border-border'}`}
           onDragOver={event => { if (!dragging.current || busy) return; event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setTarget(column.value); }}
           onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setTarget(null); }}
           onDrop={event => { event.preventDefault(); const report = reports.find(item => item.id === dragging.current); resetDrag(); if (report && report.canChangeStatus && !busy && report.status !== column.value) onMove(report, column.value); }}>
           <header className={`flex items-center gap-2 rounded-t-xl border-b p-3 ${colors[column.value]}`}><h3 className="m-0 flex items-center gap-2 text-sm font-semibold leading-none [&>svg]:block [&>svg]:size-4"><ReportIcon value={column.value} /><span className="block leading-none">{column.label}</span><ReportCountBadge count={feeds[column.value].total} className="border-current/20 bg-current/10 text-inherit" label={`segnalazioni: ${column.label}`} /></h3></header>
           <InfiniteColumn total={feeds[column.value].total} visible={items.length} loading={feeds[column.value].loading} failed={feeds[column.value].failed} onLoadMore={() => { if (!busy) { if (feeds[column.value].failed && !items.length) feeds[column.value].refresh(); else void feeds[column.value].loadMore(); } }}>
             {!items.length && !feeds[column.value].loading && !feeds[column.value].failed ? <p className="py-8 text-center text-xs text-muted-foreground">Nessuna segnalazione</p> : null}
-            {items.map(report => renderContextMenu(report, <Card key={report.id} size="sm" className={`cursor-pointer border shadow-none ring-0 transition-colors hover:border-primary/30 hover:bg-primary/5 ${draggedId === report.id ? 'opacity-40' : ''}`}
+            {items.map(report => renderContextMenu(report, <Card key={report.id} size="sm" className={`cursor-pointer border shadow-none ring-0 transition-colors hover:border-primary/30 hover:bg-primary/5 dark:border-neutral-600 dark:bg-neutral-800 dark:shadow-sm dark:hover:border-accent-foreground dark:hover:bg-neutral-700 ${draggedId === report.id ? 'opacity-40' : ''}`}
               onClick={event => { if (!busy && !suppressClick.current && !(event.target as HTMLElement).closest('button, input, a')) onOpen(report); }}
               draggable={report.canChangeStatus && !busy}
               onDragStart={event => { if (busy || !report.canChangeStatus) { event.preventDefault(); return; } if (clickResetTimer.current !== null) { clearTimeout(clickResetTimer.current); clickResetTimer.current = null; } dragging.current = report.id; suppressClick.current = true; setDraggedId(report.id); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', report.id); }}
@@ -87,7 +86,7 @@ export function ReportKanban({ reports, columns: feeds, environments, busy, onOp
               <CardHeader className="min-w-0 gap-2"><div className="flex min-w-0 items-start gap-2">
                 <CardTitle className="min-w-0 flex-1"><Button variant="ghost" className="h-auto min-w-0 w-full justify-start whitespace-normal p-0 text-left hover:bg-transparent" disabled={busy} onClick={() => { if (!suppressClick.current) onOpen(report); }}><span className="line-clamp-4 min-w-0 break-words [overflow-wrap:anywhere]">{report.body}</span></Button></CardTitle>
                 {report.canChangeStatus ? <GripVertical aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> : null}
-              </div><Badge aria-label={`Priorità: ${priorityLabels[report.priority ?? 'medium']}`} className={`border-[color-mix(in_oklab,currentColor_25%,transparent)] ${priorityColors[report.priority ?? 'medium']}`}><ReportIcon value={report.priority ?? 'medium'} />{priorityLabels[report.priority ?? 'medium']}</Badge></CardHeader>
+              </div><Badge variant="tinted" aria-label={`Priorità: ${priorityLabels[report.priority ?? 'medium']}`} className={priorityColors[report.priority ?? 'medium']}><ReportIcon value={report.priority ?? 'medium'} />{priorityLabels[report.priority ?? 'medium']}</Badge></CardHeader>
               <CardContent><div className="space-y-1 text-xs text-muted-foreground"><p className="truncate" title={report.page_path}>{environments.find(item => item.id === report.environment_id)?.name} · {report.page_path}</p><div className="flex min-w-0 items-center gap-2"><p className="truncate" title={report.authorName}>{report.authorName}</p><span aria-hidden="true">·</span><time dateTime={report.created_at} className="shrink-0 whitespace-nowrap">{formatReportDateTime(report.created_at)}</time></div></div></CardContent>
             </Card>))}
           </InfiniteColumn>
