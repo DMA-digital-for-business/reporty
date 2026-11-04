@@ -465,7 +465,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     {!mode && !draft && pinsVisible && !hideReporty ? pageReports.filter(report => showResolved || report.status !== 'resolved').map(report => {
       const position = anchorPosition(report.context.anchor);
       if (!position) return null;
-      return <div key={report.id} className={`group pointer-events-auto fixed -translate-y-full ${highlighted === report.id ? 'z-20' : ''}`} style={{left:position.x,top:position.y}}>
+      return <div key={report.id} className={`group pointer-events-auto fixed -translate-y-full focus-within:z-20 hover:z-30 ${highlighted === report.id ? 'z-20' : ''}`} style={{left:position.x,top:position.y}}>
         <ExpandingPin anchorX={position.x} anchorY={position.y} aria-label={`${statusLabels[report.status]}, priorità ${priorityLabels[report.priority ?? 'medium']}: ${report.body.slice(0,60)}`} className={`relative block ${highlighted === report.id ? 'reporty-pin-highlight' : ''} rounded-tl-[22px] rounded-tr-[22px] rounded-br-[22px] border-2 border-primary/70 bg-card text-card-foreground shadow-md transition-[width,height,translate] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none`} onClick={() => void view(report)}>
           <span aria-hidden="true" className={`reporty-pin-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full ${pinColors[report.priority ?? 'medium']} text-xs font-semibold text-white transition-opacity duration-150 group-hover:opacity-0 motion-reduce:transition-none`}>
             {(report.authorName?.trim() || 'Utente').slice(0, 1).toLocaleUpperCase('it-IT')}

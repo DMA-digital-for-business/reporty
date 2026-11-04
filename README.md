@@ -78,6 +78,7 @@ Il monorepo usa un solo `package-lock.json` nella root.
 - Creazione tramite selezione elemento o pin libero; screenshot automatico dell'area visibile con anteprima e rimozione prima dell'invio.
 - In estensione e widget, i pin mantengono l'iniziale dell'autore e usano il colore della priorità (Alta rossa, Media ambra, Bassa grigia); un piccolo badge circolare in alto a sinistra mostra l'icona dello stato. Per applicare la modifica, distribuire la build web con il widget aggiornato e ricostruire e ricaricare l'estensione; non servono aggiornamenti del database.
 - Le anteprime dei pin in estensione e widget restano entro la viewport, anche vicino ai bordi superiore, destro e sinistro e su pagine senza scorrimento; nelle viewport basse il contenuto dell’anteprima scorre internamente.
+- In estensione e widget il pin sotto il mouse passa sopra tutti gli altri, anche quelli evidenziati; anche il focus da tastiera porta il pin davanti a quelli inattivi.
 - Il testo dell’anteprima è limitato a 4 righe. Durante l’apertura le scrollbar sono nascoste; a pannello aperto lo scorrimento verticale è disponibile quando necessario, senza scorrimento orizzontale.
 - “Apri pagina originale” dalla dashboard scorre fino alla segnalazione ed evidenzia il pin, senza aprire automaticamente la modale del dettaglio. Il dettaglio si apre cliccando il pin.
 - L’evidenziazione del pin dura 2,4 secondi: sfondo e centro lampeggiano insieme ogni 100 ms con maggiore contrasto. Con movimento ridotto l’evidenziazione resta statica.
