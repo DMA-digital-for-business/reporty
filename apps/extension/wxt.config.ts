@@ -15,6 +15,7 @@ export default defineConfig({
   }),
   manifest: {
     name: 'Reporty',
+    version: process.env.WXT_EXTENSION_VERSION,
     description: 'Revisioni e segnalazioni per siti e app web',
     web_accessible_resources: [{ resources: ['brand/*.png', 'brand/*.svg'], matches: ['http://*/*', 'https://*/*'] }],
     permissions: ['storage', 'activeTab', 'scripting'],

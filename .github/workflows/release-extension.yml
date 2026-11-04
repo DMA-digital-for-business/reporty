@@ -1,4 +1,4 @@
-name: Release estensione
+name: Extension release
 
 on:
   push:
@@ -9,45 +9,49 @@ permissions:
 
 jobs:
   release:
-    name: Build e pubblicazione ZIP
+    name: Build and publish extension ZIP
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
+    env:
+      WXT_EXTENSION_VERSION: 1.0.${{ github.run_number }}
     steps:
-      - name: Checkout del commit
+      - name: Check out commit
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Configura Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
 
-      - name: Installa dipendenze dal lockfile
+      - name: Install dependencies from lockfile
         run: npm ci
 
-      - name: Verifica tipi condivisi ed estensione
+      - name: Check shared and extension types
         run: npm run typecheck --workspace=@reporty/shared --workspace=@reporty/extension
 
-      - name: Test del pacchetto condiviso
+      - name: Test shared package
         run: npm run test --workspace=@reporty/shared
 
-      - name: Genera ZIP di produzione
+      - name: Build production ZIP
         run: npm run zip:extension:production
 
-      - name: Verifica ZIP e backend di produzione
+      - name: Verify ZIP and production backend
         run: |
           python3 - <<'PY'
           import json
+          import os
           import zipfile
 
           api = "https://reporty-extension.vercel.app"
           with zipfile.ZipFile("downloads/reporty-chrome.zip") as archive:
               assert archive.testzip() is None, "Archivio ZIP danneggiato"
               manifest = json.loads(archive.read("manifest.json"))
+              assert manifest.get("version") == os.environ["WXT_EXTENSION_VERSION"], "Versione del manifest diversa dalla release"
               assert manifest.get("manifest_version") == 3, "Manifest V3 richiesto"
               assert manifest.get("name") == "Reporty", "Nome estensione inatteso"
               assert manifest.get("host_permissions") == [api + "/*"], "Permessi backend non di produzione"
@@ -57,38 +61,39 @@ jobs:
           print("ZIP verificato: Manifest V3 e backend di produzione")
           PY
 
-      - name: Pubblica release con ZIP
+      - name: Publish extension release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          short_sha="${GITHUB_SHA:0:7}"
-          tag="extension-${GITHUB_RUN_NUMBER}-${short_sha}"
+          tag="extension-v${WXT_EXTENSION_VERSION}"
+          asset="$RUNNER_TEMP/${tag}.zip"
+          cp downloads/reporty-chrome.zip "$asset"
 
           # Un nuovo tentativo riprende una bozza o conserva la release già pubblicata.
           if draft="$(gh release view "$tag" --json isDraft --jq '.isDraft')"; then
             if [ "$draft" = "false" ]; then
-              echo "Release già pubblicata: $tag"
+              echo "Release already published: $tag"
               exit 0
             fi
           else
             cat > "$RUNNER_TEMP/extension-release-notes.md" <<EOF
-          Estensione Reporty per Chrome ed Edge, compilata per https://reporty-extension.vercel.app.
+          Reporty extension v${WXT_EXTENSION_VERSION} for Chrome and Edge, built for https://reporty-extension.vercel.app.
 
           Commit: $GITHUB_SHA
 
-          Scaricare reporty-chrome.zip, estrarlo in una cartella permanente e caricarla da chrome://extensions o edge://extensions con Modalità sviluppatore e Carica estensione non pacchettizzata.
+          Download ${tag}.zip, extract it to a permanent folder, then open chrome://extensions or edge://extensions, enable Developer mode and choose Load unpacked.
 
-          Per aggiornare, estrarre lo ZIP nella stessa cartella e premere Ricarica nella pagina delle estensioni.
+          To update, extract the new ZIP into the same folder and click Reload on the extensions page.
           EOF
             gh release create "$tag" \
               --target "$GITHUB_SHA" \
-              --title "Estensione #${GITHUB_RUN_NUMBER} (${short_sha})" \
+              --title "$tag" \
               --notes-file "$RUNNER_TEMP/extension-release-notes.md" \
               --draft
           fi
 
-          gh release upload "$tag" downloads/reporty-chrome.zip --clobber
+          gh release upload "$tag" "$asset" --clobber
 
           # Una build precedente può terminare dopo quella di un push più recente.
           main_sha="$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')"

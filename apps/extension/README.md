@@ -4,7 +4,7 @@ Chrome ed Edge desktop, WXT + React e shadcn/ui. Non richiede script nel sito.
 
 ## Distribuzione senza marketplace
 
-Ogni push su `main` genera e pubblica automaticamente lo ZIP collegato alla piattaforma di produzione in una [Release GitHub](https://github.com/DMA-digital-for-business/reporty/releases). Scaricare [`reporty-chrome.zip` dall’ultima release](https://github.com/DMA-digital-for-business/reporty/releases/latest/download/reporty-chrome.zip); il link sarà disponibile dopo il primo rilascio riuscito. Il workflow [Release estensione](../../.github/workflows/release-extension.yml) verifica tipi, test condivisi, integrità dello ZIP e backend prima di pubblicarlo, usando il token automatico di GitHub senza segreti aggiuntivi. Ogni release ha un tag `extension-<numero esecuzione>-<commit breve>` associato al commit del push.
+Ogni push su `main` genera e pubblica automaticamente lo ZIP collegato alla piattaforma di produzione in una [Release GitHub](https://github.com/DMA-digital-for-business/reporty/releases). Scaricare l’asset `extension-v1.0.<numero build>.zip` dall’[ultima release](https://github.com/DMA-digital-for-business/reporty/releases/latest); il link sarà disponibile dopo il primo rilascio riuscito. Il workflow [Extension release](../../.github/workflows/release-extension.yml) verifica tipi, test condivisi, integrità dello ZIP, versione del manifest e backend prima di pubblicarlo, usando il token automatico di GitHub senza segreti aggiuntivi. Nome e tag della release sono `extension-v1.0.<numero build>`, associati al commit del push; le note sono in inglese. Il terzo numero è `github.run_number`: aumenta a ogni nuova esecuzione e resta invariato nei tentativi della stessa esecuzione.
 
 Per generare lo stesso ZIP localmente, dalla root:
 
@@ -12,7 +12,7 @@ Per generare lo stesso ZIP localmente, dalla root:
 npm run zip:extension:production
 ```
 
-WXT crea `apps/extension/.output/reportyextension-0.0.0-chrome.zip` (il nome cambia con la versione). Il comando aggiorna anche [`downloads/reporty-chrome.zip`](../../downloads/reporty-chrome.zip), la copia pronta da condividere nel repository. La pipeline allega questa build alla release senza committare lo ZIP e senza cambiare la versione del manifest.
+WXT crea `apps/extension/.output/reportyextension-0.0.0-chrome.zip` (il nome cambia con la versione). Il comando aggiorna anche [`downloads/reporty-chrome.zip`](../../downloads/reporty-chrome.zip), la copia pronta da condividere nel repository. La pipeline imposta la versione del manifest tramite `WXT_EXTENSION_VERSION` e allega la build con il nome versionato, senza committare lo ZIP o modificare il `package.json`. In locale, senza questa variabile, WXT usa la versione del `package.json` dell’estensione.
 
 Per installarlo:
 
