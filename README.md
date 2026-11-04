@@ -103,7 +103,11 @@ Sono presenti le basi del monorepo, l'accesso Google/email, gestione sessione e 
 
 ## Download estensione
 
-Scaricare [`reporty-chrome.zip`](downloads/reporty-chrome.zip), estrarlo e caricare la cartella da Chrome o Edge in modalità sviluppatore. [Istruzioni complete](apps/extension/README.md#distribuzione-senza-marketplace). La build inclusa usa `https://reporty-extension.vercel.app`.
+Scaricare [`reporty-chrome.zip` dall’ultima release](https://github.com/DMA-digital-for-business/reporty/releases/latest/download/reporty-chrome.zip), estrarlo e caricare la cartella da Chrome o Edge in modalità sviluppatore. [Istruzioni complete](apps/extension/README.md#distribuzione-senza-marketplace). La build usa `https://reporty-extension.vercel.app`. Il link sarà disponibile dopo la prima esecuzione riuscita della pipeline; resta disponibile anche la [copia nel repository](downloads/reporty-chrome.zip).
+
+Ogni push su `main` avvia [Release estensione](.github/workflows/release-extension.yml): installazione con `npm ci`, typecheck di estensione e pacchetto condiviso, test condivisi, generazione e verifica dello ZIP di produzione, quindi pubblicazione di una release con l’asset `reporty-chrome.zip`. Il tag è `extension-<numero esecuzione>-<commit breve>` e punta esattamente al commit del push. Un nuovo tentativo della stessa esecuzione riprende la bozza oppure lascia invariata la release già pubblicata. La release viene pubblicata solo dopo il caricamento dello ZIP; le build di commit superati non sostituiscono l’ultima release.
+
+La pipeline usa il `GITHUB_TOKEN` automatico con `contents: write` nel job di rilascio: non servono token personali o segreti aggiuntivi. GitHub Actions deve essere abilitato e le policy del repository/organizzazione devono consentire quel permesso e le action `actions/checkout` e `actions/setup-node`. La pipeline non aggiorna la copia dello ZIP nel repository né la versione del manifest; `npm run zip:extension:production` resta disponibile per generare la copia locale. Gli aggiornamenti dell’estensione installata restano manuali.
 
 Le sessioni ospite dell’estensione sono separate per origine del sito (protocollo, dominio e porta): aprire un altro invito non scollega i siti già collegati. Gli avvii della revisione sono separati anche per scheda del browser.
 

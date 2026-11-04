@@ -4,13 +4,15 @@ Chrome ed Edge desktop, WXT + React e shadcn/ui. Non richiede script nel sito.
 
 ## Distribuzione senza marketplace
 
-Dalla root genera lo ZIP collegato alla piattaforma di produzione:
+Ogni push su `main` genera e pubblica automaticamente lo ZIP collegato alla piattaforma di produzione in una [Release GitHub](https://github.com/DMA-digital-for-business/reporty/releases). Scaricare [`reporty-chrome.zip` dall’ultima release](https://github.com/DMA-digital-for-business/reporty/releases/latest/download/reporty-chrome.zip); il link sarà disponibile dopo il primo rilascio riuscito. Il workflow [Release estensione](../../.github/workflows/release-extension.yml) verifica tipi, test condivisi, integrità dello ZIP e backend prima di pubblicarlo, usando il token automatico di GitHub senza segreti aggiuntivi. Ogni release ha un tag `extension-<numero esecuzione>-<commit breve>` associato al commit del push.
+
+Per generare lo stesso ZIP localmente, dalla root:
 
 ```sh
 npm run zip:extension:production
 ```
 
-WXT crea `apps/extension/.output/reportyextension-0.0.0-chrome.zip` (il nome cambia con la versione). Lo ZIP pronto da condividere nella repo si trova in [`downloads/reporty-chrome.zip`](../../downloads/reporty-chrome.zip). Il comando aggiorna automaticamente questa copia: pubblicare poi le modifiche su GitHub. Puoi inoltre allegare lo ZIP a una Release GitHub.
+WXT crea `apps/extension/.output/reportyextension-0.0.0-chrome.zip` (il nome cambia con la versione). Il comando aggiorna anche [`downloads/reporty-chrome.zip`](../../downloads/reporty-chrome.zip), la copia pronta da condividere nel repository. La pipeline allega questa build alla release senza committare lo ZIP e senza cambiare la versione del manifest.
 
 Per installarlo:
 

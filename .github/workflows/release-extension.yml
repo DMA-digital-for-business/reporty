@@ -1,0 +1,99 @@
+name: Release estensione
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build e pubblicazione ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout del commit
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Configura Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Installa dipendenze dal lockfile
+        run: npm ci
+
+      - name: Verifica tipi condivisi ed estensione
+        run: npm run typecheck --workspace=@reporty/shared --workspace=@reporty/extension
+
+      - name: Test del pacchetto condiviso
+        run: npm run test --workspace=@reporty/shared
+
+      - name: Genera ZIP di produzione
+        run: npm run zip:extension:production
+
+      - name: Verifica ZIP e backend di produzione
+        run: |
+          python3 - <<'PY'
+          import json
+          import zipfile
+
+          api = "https://reporty-extension.vercel.app"
+          with zipfile.ZipFile("downloads/reporty-chrome.zip") as archive:
+              assert archive.testzip() is None, "Archivio ZIP danneggiato"
+              manifest = json.loads(archive.read("manifest.json"))
+              assert manifest.get("manifest_version") == 3, "Manifest V3 richiesto"
+              assert manifest.get("name") == "Reporty", "Nome estensione inatteso"
+              assert manifest.get("host_permissions") == [api + "/*"], "Permessi backend non di produzione"
+              assert manifest.get("externally_connectable", {}).get("matches") == [api + "/*"], "Collegamento dashboard non di produzione"
+              assert any(api + "/guest/*" in script.get("matches", []) for script in manifest.get("content_scripts", [])), "Bridge ospiti non di produzione"
+              assert api.encode() in archive.read(manifest["background"]["service_worker"]), "Backend di produzione assente dal bundle"
+          print("ZIP verificato: Manifest V3 e backend di produzione")
+          PY
+
+      - name: Pubblica release con ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          short_sha="${GITHUB_SHA:0:7}"
+          tag="extension-${GITHUB_RUN_NUMBER}-${short_sha}"
+
+          # Un nuovo tentativo riprende una bozza o conserva la release già pubblicata.
+          if draft="$(gh release view "$tag" --json isDraft --jq '.isDraft')"; then
+            if [ "$draft" = "false" ]; then
+              echo "Release già pubblicata: $tag"
+              exit 0
+            fi
+          else
+            cat > "$RUNNER_TEMP/extension-release-notes.md" <<EOF
+          Estensione Reporty per Chrome ed Edge, compilata per https://reporty-extension.vercel.app.
+
+          Commit: $GITHUB_SHA
+
+          Scaricare reporty-chrome.zip, estrarlo in una cartella permanente e caricarla da chrome://extensions o edge://extensions con Modalità sviluppatore e Carica estensione non pacchettizzata.
+
+          Per aggiornare, estrarre lo ZIP nella stessa cartella e premere Ricarica nella pagina delle estensioni.
+          EOF
+            gh release create "$tag" \
+              --target "$GITHUB_SHA" \
+              --title "Estensione #${GITHUB_RUN_NUMBER} (${short_sha})" \
+              --notes-file "$RUNNER_TEMP/extension-release-notes.md" \
+              --draft
+          fi
+
+          gh release upload "$tag" downloads/reporty-chrome.zip --clobber
+
+          # Una build precedente può terminare dopo quella di un push più recente.
+          main_sha="$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')"
+          latest=false
+          if [ "$GITHUB_SHA" = "$main_sha" ]; then
+            latest=true
+          fi
+          gh release edit "$tag" --draft=false --latest="$latest"
