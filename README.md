@@ -65,6 +65,14 @@ npm run dev:extension
 Verifiche: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 Il monorepo usa un solo `package-lock.json` nella root.
 
+### Sicurezza delle dipendenze
+
+L'aggiornamento del 5 novembre 2026 porta Next.js ed ESLint Next a `16.4.5`, Vite a `8.3.6`, Zod a `4.6.7`, shadcn a `4.23.0` e web-ext a `10.8.0`, insieme alle correzioni transitive nel lockfile. Anche il server MCP usa ora gli schemi Zod 4. Gli override nella root impongono `minimatch` 11 alle dipendenze che richiedono le versioni vulnerabili 7–10 e web-ext 10.8 a WXT, che richiede ancora una versione esatta precedente. Rimuoverli quando i rispettivi pacchetti aggiornano i propri vincoli.
+
+Verificare con `npm audit`. Al 5 novembre 2026 non risultano vulnerabilità critiche, alte o moderate; restano sei segnalazioni basse riconducibili a un'unica vulnerabilità di `deepmerge@4.3.1`, usato da shadcn e addons-linter/web-ext/WXT. [L'advisory GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4) non indica versioni corrette disponibili. `npm audit fix --force` propone downgrade incompatibili: non applicarli per azzerare l'audit.
+
+Per applicare gli aggiornamenti alle installazioni esistenti servono `npm ci`, il deploy di dashboard e landing e la ricostruzione e ricarica dell'estensione. Il bundle widget viene rigenerato dalla build web. Non sono necessari aggiornamenti del database.
+
 ## Specifiche concordate
 
 - Account con Google o link via email tramite Supabase Auth.

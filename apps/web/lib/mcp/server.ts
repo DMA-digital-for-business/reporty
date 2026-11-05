@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 type File = { bucket: string; path: string; name: string; mime: string };
 export type McpBackend = {
