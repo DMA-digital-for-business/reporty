@@ -201,9 +201,10 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, sha
   const [selectedReport, setSelected] = useState<Report | null>(null);
   const selected = selectedReport ? fieldUpdates.project(selectedReport) : null;
   const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [linkedPin, setLinkedPin] = useState<Report | null>(null);
   useEffect(() => {
     if (!highlighted) return;
-    const timer = setTimeout(() => setHighlighted(null), 2400);
+    const timer = setTimeout(() => { setHighlighted(null); setLinkedPin(null); }, 3000);
     return () => clearTimeout(timer);
   }, [highlighted]);
   const [comments, setComments] = useState<ReportComment[]>([]);
@@ -436,8 +437,17 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, sha
         }
         cancelScroll = scrollToLinkedReport(() => locate(report.context.anchor), report.context.scroll, () => {
           if (!finish()) return false;
-          if (report.status === 'resolved') setShowResolved(true);
-          setHighlighted(id);
+          // The jump is instant. Highlight on the next frame using the report
+          // already fetched by ID, even if the pin list has not arrived.
+          requestAnimationFrame(() => {
+            if (notificationScope.current !== scope) return;
+            if (!locate(report.context.anchor)) {
+              setStatus('Elemento della segnalazione non trovato. Mostrata la posizione salvata.');
+              return;
+            }
+            setLinkedPin(report);
+            setHighlighted(id);
+          });
           return true;
         });
       } catch (error) {
@@ -500,6 +510,8 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, sha
   useEffect(() => () => { modal.current?.close(); }, []);
   const pinIds = pinSelection ? new Set(pinSelection.ids) : null;
   const pageReports = reports.filter(report => report.page_path === page.pagePath).map(report => fieldUpdates.project(report));
+  const activeLinkedPin = linkedPin?.id === highlighted && linkedPin.environment_id === environment.id && linkedPin.page_path === page.pagePath ? linkedPin : null;
+  if (activeLinkedPin && !pageReports.some(report => report.id === activeLinkedPin.id)) pageReports.push(activeLinkedPin);
   const filtered = listFeed.reports.map(report => fieldUpdates.project(report));
   const paginated = filtered;
   const listRef = useRef<HTMLElement | null>(null);
@@ -524,7 +536,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, sha
     {nameDialog}
     {hover && mode ? <div className="pointer-events-none fixed border-2 border-indigo-500 bg-indigo-500/10" style={{ left: hover.left, top: hover.top, width: hover.width, height: hover.height }} /> : null}
     {mode ? <div className="pointer-events-auto fixed left-1/2 top-4 -translate-x-1/2 rounded-lg border bg-card p-3 text-sm shadow-xl">{mode === 'element' ? 'Seleziona un elemento' : 'Posiziona un pin'} · Esc per annullare <Button size="sm" variant="outline" onClick={() => { setMode(null); setOpen(true); }}>Annulla</Button></div> : null}
-    {!mode && !draft && pinsVisible && !hideReporty ? pageReports.filter(report => pinSelection ? pinSelection.pagePath === page.pagePath && pinIds!.has(report.id) : showResolved || report.status !== 'resolved').map(report => {
+    {!mode && !draft && pinsVisible && !hideReporty ? pageReports.filter(report => report.id === activeLinkedPin?.id || (pinSelection ? pinSelection.pagePath === page.pagePath && pinIds!.has(report.id) : showResolved || report.status !== 'resolved')).map(report => {
       const position = anchorPosition(report.context.anchor);
       if (!position) return null;
       return <div key={report.id} className={`group pointer-events-auto fixed -translate-y-full focus-within:z-20 hover:z-30 ${highlighted === report.id ? 'z-20' : ''}`} style={{left:position.x,top:position.y}}>
