@@ -57,7 +57,7 @@ function LocalReview({ host }: { host: HTMLElement }) {
     catch { throw new Error('Impossibile salvare le preferenze della demo in questo browser.'); }
     setPreferences(next);
   }
-  return <ReviewOverlay key={resetRevision} host={host} site={{ environmentId: environment.id, ...preferences }} environment={environment} transport={transport} mediaEnabled={false} openCreatedReport creationRequest={creationRequest} onSelectionChange={selectionChanged} reportsRevision={revision} onHiddenChange={hidden => savePreferences({ ...preferences, hidden })} onPositionChange={position => savePreferences({ ...preferences, position })} />;
+  return <ReviewOverlay key={resetRevision} host={host} site={{ environmentId: environment.id, ...preferences }} environment={environment} transport={transport} mediaEnabled={false} shareLinks={false} openCreatedReport creationRequest={creationRequest} onSelectionChange={selectionChanged} reportsRevision={revision} onHiddenChange={hidden => savePreferences({ ...preferences, hidden })} onPositionChange={position => savePreferences({ ...preferences, position })} />;
 }
 
 async function mount() {

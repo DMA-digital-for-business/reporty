@@ -17,3 +17,9 @@ export function getPageContext(input: string) {
 export function reportDashboardPath(projectId: string, reportId: string): string {
   return `/dashboard/projects/${projectId}?report=${reportId}`;
 }
+
+export function reportSiteUrl(pageUrl: string, reportId: string): string {
+  const url = new URL(pageUrl);
+  url.searchParams.set('__reporty_issue', reportId);
+  return url.href;
+}

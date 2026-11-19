@@ -3,7 +3,7 @@ import { shadowStyles } from '@/lib/shadow-styles';
 import { ToastProvider } from '@/components/ui/toast';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { apiOrigin, type Site, type Environment } from '@/lib/session';
+import type { Site, Environment } from '@/lib/session';
 import { ReviewOverlay } from '@/components/review-overlay';
 import css from '@/entrypoints/popup/style.css?inline';
 import { isPageActive, subscribePageActivity } from '@reporty/shared';
@@ -25,7 +25,7 @@ export default defineContentScript({
     let pending = false;
     function renderReview(data: { site: Site; environment: Environment } | null) {
       root.render(data ? React.createElement(ToastProvider, { children: React.createElement(ReviewOverlay, {
-        ...data, host, dashboardOrigin: apiOrigin,
+        ...data, host,
         onHiddenChange: async hidden => {
           const response = await browser.runtime.sendMessage({ type: 'REPORTY_VISIBILITY', environmentId: data.environment.id, hidden });
           if (!response?.ok) throw new Error(response?.error ?? 'Visibilità non aggiornata.');
