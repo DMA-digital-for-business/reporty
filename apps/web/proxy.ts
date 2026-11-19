@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { reportReturnPath } from './lib/login-return-path';
 import { supabaseConfig } from './lib/supabase/config';
 
 export async function proxy(request: NextRequest) {
@@ -15,7 +16,18 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (request.method === 'GET' && (error || !claims || claims.is_anonymous || claims.client_id || claims.reporty_mcp_connection)) {
+    const next = reportReturnPath(request.nextUrl.pathname + request.nextUrl.search);
+    if (next) {
+      const login = new URL('/login', request.url);
+      login.searchParams.set('next', next);
+      const redirect = NextResponse.redirect(login);
+      response.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie));
+      response = redirect;
+    }
+  }
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }

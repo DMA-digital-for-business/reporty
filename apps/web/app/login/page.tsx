@@ -1,5 +1,5 @@
 
-import { oauthReturnPath } from '@/lib/mcp/return-path';
+import { loginReturnPath } from '@/lib/login-return-path';
 import { BrandLogo } from '@/components/brand-logo';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -17,10 +17,10 @@ export default async function Login({ searchParams }: {
   searchParams: Promise<{ message?: string; next?: string }>;
 }) {
   const { message, next: returnTo } = await searchParams;
-  const next = oauthReturnPath(returnTo);
+  const next = loginReturnPath(returnTo);
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  if (data?.claims && !data.claims.is_anonymous && !data.claims.client_id) {
+  if (data?.claims && !data.claims.is_anonymous && !data.claims.client_id && !data.claims.reporty_mcp_connection) {
     redirect(next ?? '/dashboard');
   }
   return (

@@ -32,9 +32,9 @@ import { ScreenshotGallery } from '@/components/screenshot-gallery';
 import type { ReportSort, ReportNotification } from '@reporty/shared';
 import { useReportPage } from '@reporty/shared/ui/use-report-page';
 import { usePageActive } from '@reporty/shared/ui/use-page-active';
-import { isPageActive, MAX_REPORT_SCREENSHOTS } from '@reporty/shared';
+import { isPageActive, isUuid, MAX_REPORT_SCREENSHOTS } from '@reporty/shared';
 import type { NotificationPage, ReportPage, ReportPageQuery, ReportPin } from '@reporty/shared';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Bell, Settings, Menu, X, Crosshair, Eye, EyeOff, MapPin, Pencil, Plus, Target, Trash2 } from 'lucide-react';
 import { notificationSummary, notificationKindLabels, formatReportDateTime, getPageContext, priorityLabels, type ReportPriority, type Anchor, type Report, type ReportComment, type ReportContext } from '@reporty/shared';
 import type { Environment, Site } from '@/lib/session';
@@ -46,6 +46,7 @@ import { Label } from '@/components/ui/label';
 import { anchorPosition as locate } from '@/lib/anchor';
 import type { PlaygroundPinSelection } from '@/lib/playground-bridge';
 import { pinPreviewLayout } from '@/lib/pin-preview';
+import { scrollToLinkedReport } from '@/lib/report-link-scroll';
 import { useReviewerIdentity } from '@/components/reviewer-identity';
 import { createReportFieldUpdates, type ReportFieldChange } from '@/lib/report-field-updates';
 
@@ -99,7 +100,6 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
       || (body.type === 'REPORTY_ATTACHMENT' && (body.payload as AttachmentRequest)?.operation !== 'read')) await ensureIdentity();
     return rawMessage(body);
   };
-  const deepLink = useRef(new URL(location.href).searchParams.get('__reporty_issue'));
   const [page, setPage] = useState(getPageContext(location.href));
   const [reports, setReports] = useState<ReportPin[]>([]);
   const [open, setOpen] = useState(false);
@@ -212,7 +212,6 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const setStatus = useNotify();
-  const [pinsLoading, setPinsLoading] = useState(true);
   const [threadLoading, setThreadLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const [capturing, setCapturing] = useState(false);
@@ -250,7 +249,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     const revision = ++pinsRevision.current;
     const scope = notificationScope.current;
     const readRevision = fieldUpdates.revision;
-    if (!background) { setPinsLoading(true); listFeed.refresh(); }
+    if (!background) listFeed.refresh();
     const listing = background ? listFeed.poll() : Promise.resolve();
     try {
       const result = await message({ type: 'REPORTY_REPORT', operation: 'pins', payload: { pagePath: page.pagePath } });
@@ -258,7 +257,6 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
       return result.data as ReportPin[];
     } finally {
       await listing;
-      if (scope === notificationScope.current && revision === pinsRevision.current) setPinsLoading(false);
     }
   }
   async function run(work: () => Promise<void>) {
@@ -350,8 +348,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
   useEffect(() => {
     if (hideReporty || !pageActive) return;
     let disposed = false;
-    setPinsLoading(true);
-    void refresh().catch(error => { if (!disposed) setStatus(error.message); }).finally(() => { if (!disposed) setPinsLoading(false); });
+    void refresh().catch(error => { if (!disposed) setStatus(error.message); });
     return () => { disposed = true; };
   }, [page.pagePath, environment.id, pageActive, hideReporty, reportsRevision]);
   const handledRequest = useRef('');
@@ -374,42 +371,45 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     })();
     return () => { disposed = true; };
   }, [requestedReport?.requestId, page.pagePath, environment.id, busy]);
-  useEffect(() => {
-    const id = deepLink.current;
-    if (!id || pinsLoading) return;
-    const report = reports.find(item => item.id === id && item.page_path === page.pagePath);
-    if (!report) return;
-    if (report.context.anchor.kind === 'page') { deepLink.current = null; void view(report); return; }
-    let attempts = 0;
-    let stable = 0;
-    let previous: { x: number; y: number } | null = null;
-    let timer: ReturnType<typeof setTimeout>;
+  const linkedReportId = new URL(page.url).searchParams.get('__reporty_issue')?.toLowerCase();
+  const handledLink = useRef<string | undefined>(undefined);
+  const followReportLink = useEffectEvent((id: string) => {
+    const { pagePath } = page;
+    const scope = notificationScope.current;
+    const link = scope + ':' + id;
+    if (handledLink.current === link) return;
     let disposed = false;
-    const finish = () => {
-      if (disposed) return;
-      deepLink.current = null;
-      if (report.status === 'resolved') setShowResolved(true);
-      setHighlighted(report.id);
-    };
-    const move = () => {
-      if (disposed) return;
-      const point = locate(report.context.anchor);
-      if (point) {
-        const absolute = { x: point.x + scrollX, y: point.y + scrollY };
-        stable = previous && Math.abs(previous.x - absolute.x) < 2 && Math.abs(previous.y - absolute.y) < 2 ? stable + 1 : 0;
-        previous = absolute;
-        window.scrollBy({ top: point.y - innerHeight / 2, left: 0, behavior: 'instant' });
-        if (stable >= 3) { finish(); return; }
+    let cancelScroll: (() => void) | undefined;
+    void (async () => {
+      try {
+        const listing = await fetchPage({ id, pagePath, limit: 1 });
+        if (disposed || notificationScope.current !== scope) return;
+        const report = listing.reports.find(item => item.id === id && item.environment_id === environment.id && item.page_path === pagePath);
+        if (!report) throw new Error('Segnalazione non disponibile in questa pagina.');
+        if (report.context.anchor.kind === 'page') {
+          handledLink.current = link;
+          void view(report);
+          return;
+        }
+        cancelScroll = scrollToLinkedReport(() => locate(report.context.anchor), report.context.scroll, () => {
+          handledLink.current = link;
+          if (report.status === 'resolved') setShowResolved(true);
+          setHighlighted(id);
+        });
+      } catch (error) {
+        if (!disposed && notificationScope.current === scope) {
+          handledLink.current = link;
+          setStatus(error instanceof Error ? error.message : 'Segnalazione non disponibile.');
+        }
       }
-      if (++attempts >= 20) {
-        if (!point && report.context.scroll) window.scrollTo({ top: report.context.scroll.y, left: report.context.scroll.x, behavior: 'instant' });
-        finish(); return;
-      }
-      timer = setTimeout(move, 250);
-    };
-    timer = setTimeout(move, 250);
-    return () => { disposed = true; clearTimeout(timer); };
-  }, [reports, pinsLoading, page.pagePath]);
+    })();
+    return () => { disposed = true; cancelScroll?.(); };
+  });
+  useEffect(() => {
+    if (!linkedReportId) { handledLink.current = undefined; return; }
+    if (!pageActive || !isUuid(linkedReportId)) return;
+    return followReportLink(linkedReportId);
+  }, [linkedReportId, page.pagePath, environment.id, pageActive]);
   useEffect(() => {
     const timer = setInterval(() => {
       const current = getPageContext(location.href);
