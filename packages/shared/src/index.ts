@@ -2,7 +2,7 @@ export { createNotificationArrivalTracker, notificationKind, notificationSummary
 export type { ReportSort, ReportSortField } from './report-order';
 export { compareReports, compareReportsBy } from './report-order';
 export { formatReportDateTime } from './date';
-export { getPageContext } from './page';
+export { getPageContext, reportDashboardPath } from './page';
 export { isPageActive, setEmbeddedPageActive, subscribePageActivity, whenPageActive } from './page-activity';
 export { normalizeOrigin, validateName, isUuid } from './project';
 export { bulkReportRequestSchema, matchesReportUsers, reportContextSchema, reportRequestSchema, reportPrioritySchema, priorityLabels } from './reports';

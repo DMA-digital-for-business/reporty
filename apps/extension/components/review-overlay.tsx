@@ -35,8 +35,8 @@ import { usePageActive } from '@reporty/shared/ui/use-page-active';
 import { isPageActive, isUuid, MAX_REPORT_SCREENSHOTS } from '@reporty/shared';
 import type { NotificationPage, ReportPage, ReportPageQuery, ReportPin } from '@reporty/shared';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Bell, Settings, Menu, X, Crosshair, Eye, EyeOff, MapPin, Pencil, Plus, Target, Trash2 } from 'lucide-react';
-import { notificationSummary, notificationKindLabels, formatReportDateTime, getPageContext, priorityLabels, type ReportPriority, type Anchor, type Report, type ReportComment, type ReportContext } from '@reporty/shared';
+import { ArrowLeft, ChevronLeft, ChevronRight, Bell, Settings, Menu, X, Crosshair, Eye, EyeOff, MapPin, Pencil, Plus, Share2, Target, Trash2 } from 'lucide-react';
+import { notificationSummary, notificationKindLabels, formatReportDateTime, getPageContext, priorityLabels, reportDashboardPath, type ReportPriority, type Anchor, type Report, type ReportComment, type ReportContext } from '@reporty/shared';
 import type { Environment, Site } from '@/lib/session';
 import { captureHighlightedScreenshot, capturePageScreenshot } from '@/lib/screenshot';
 import { captureTab, stopTabCapture } from '@/lib/capture-tab';
@@ -46,7 +46,7 @@ import { Label } from '@/components/ui/label';
 import { anchorPosition as locate } from '@/lib/anchor';
 import type { PlaygroundPinSelection } from '@/lib/playground-bridge';
 import { pinPreviewLayout } from '@/lib/pin-preview';
-import { scrollToLinkedReport } from '@/lib/report-link-scroll';
+import { onManualReportScroll, scrollToLinkedReport } from '@/lib/report-link-scroll';
 import { useReviewerIdentity } from '@/components/reviewer-identity';
 import { createReportFieldUpdates, type ReportFieldChange } from '@/lib/report-field-updates';
 
@@ -90,7 +90,7 @@ function ExpandingPin({ children, anchorX, anchorY, ...props }: React.ButtonHTML
 type DraftScreenshot = ScreenshotImage & { id: string };
 type Draft = { id: string; context: ReportContext; screenshots: DraftScreenshot[]; files: DraftReportFile[]; body: string; priority: ReportPriority; saved?: boolean; uploaded?: string[] };
 
-export function ReviewOverlay({ site, environment, host, transport, logoUrl, onPositionChange, onHiddenChange, captureScreenshot: captureOverride, requestedReport, onOpenReport, reportsRevision, pinSelection, mediaEnabled = true, openCreatedReport = false, creationRequest, onSelectionChange }: { site: Site; environment: Environment; host: HTMLElement; onPositionChange: (position: Site['position']) => Promise<void>; onHiddenChange: (hidden: boolean) => Promise<void>; transport?: (body: Record<string, unknown>) => Promise<unknown>; logoUrl?: string; captureScreenshot?: () => Promise<string>; requestedReport?: { id: string; requestId: string; focusOnly?: boolean }; onOpenReport?: (id: string) => boolean; reportsRevision?: number; pinSelection?: PlaygroundPinSelection | null; mediaEnabled?: boolean; openCreatedReport?: boolean; creationRequest?: string; onSelectionChange?: (active: boolean) => void }) {
+export function ReviewOverlay({ site, environment, host, transport, dashboardOrigin, logoUrl, onPositionChange, onHiddenChange, captureScreenshot: captureOverride, requestedReport, onOpenReport, reportsRevision, pinSelection, mediaEnabled = true, openCreatedReport = false, creationRequest, onSelectionChange }: { site: Site; environment: Environment; host: HTMLElement; onPositionChange: (position: Site['position']) => Promise<void>; onHiddenChange: (hidden: boolean) => Promise<void>; transport?: (body: Record<string, unknown>) => Promise<unknown>; dashboardOrigin?: string; logoUrl?: string; captureScreenshot?: () => Promise<string>; requestedReport?: { id: string; requestId: string; focusOnly?: boolean }; onOpenReport?: (id: string) => boolean; reportsRevision?: number; pinSelection?: PlaygroundPinSelection | null; mediaEnabled?: boolean; openCreatedReport?: boolean; creationRequest?: string; onSelectionChange?: (active: boolean) => void }) {
   const [fieldUpdates] = useState(createReportFieldUpdates);
   useEffect(() => () => stopTabCapture(), [environment.id, captureOverride]);
   const rawMessage = async (body: Record<string, unknown>) => (transport ? await transport(body) : await extensionMessage(body)) as Awaited<ReturnType<typeof extensionMessage>>;
@@ -264,6 +264,34 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     try { await work(); } catch (error) { setStatus(error instanceof Error ? error.message : 'Operazione non riuscita.'); }
     finally { setBusy(false); }
   }
+  async function copyReportLink(report: Report, trigger: HTMLElement) {
+    if (!dashboardOrigin) return;
+    const url = new URL(reportDashboardPath(report.project_id, report.id), dashboardOrigin).href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setStatus('Link copiato', 'success');
+    } catch {
+      const dialog = modal.current;
+      if (!dialog?.open || !trigger.isConnected) return;
+      // Reviewed sites may use HTTP or restrict the Clipboard API in frames.
+      const field = document.createElement('textarea');
+      field.value = url;
+      field.readOnly = true;
+      field.tabIndex = -1;
+      field.style.cssText = 'position:fixed;inset-block-start:0;width:1px;height:1px;opacity:0;pointer-events:none';
+      dialog.append(field);
+      try {
+        field.select();
+        if (!document.execCommand('copy')) throw new Error('Copy failed');
+        setStatus('Link copiato', 'success');
+      } catch {
+        setStatus('Impossibile copiare il link');
+      } finally {
+        field.remove();
+        trigger.focus({ preventScroll: true });
+      }
+    }
+  }
   const visibilityLock = useRef(false);
   const positionLock = useRef(false);
   function updatePosition(value: string) {
@@ -380,6 +408,23 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
     if (handledLink.current === link) return;
     let disposed = false;
     let cancelScroll: (() => void) | undefined;
+    function dispose() {
+      disposed = true;
+      cancelScroll?.();
+      stopListening();
+    }
+    function finish() {
+      dispose();
+      const url = new URL(location.href);
+      if (notificationScope.current !== scope || getPageContext(url.href).pagePath !== pagePath ||
+          url.searchParams.get('__reporty_issue')?.toLowerCase() !== id) return false;
+      handledLink.current = link;
+      url.searchParams.delete('__reporty_issue');
+      history.replaceState(history.state, '', url);
+      setPage(getPageContext(url.href));
+      return true;
+    }
+    const stopListening = onManualReportScroll(finish);
     void (async () => {
       try {
         const listing = await fetchPage({ id, pagePath, limit: 1 });
@@ -387,23 +432,20 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
         const report = listing.reports.find(item => item.id === id && item.environment_id === environment.id && item.page_path === pagePath);
         if (!report) throw new Error('Segnalazione non disponibile in questa pagina.');
         if (report.context.anchor.kind === 'page') {
-          handledLink.current = link;
-          void view(report);
+          if (finish()) void view(report);
           return;
         }
         cancelScroll = scrollToLinkedReport(() => locate(report.context.anchor), report.context.scroll, () => {
-          handledLink.current = link;
+          if (!finish()) return false;
           if (report.status === 'resolved') setShowResolved(true);
           setHighlighted(id);
+          return true;
         });
       } catch (error) {
-        if (!disposed && notificationScope.current === scope) {
-          handledLink.current = link;
-          setStatus(error instanceof Error ? error.message : 'Segnalazione non disponibile.');
-        }
+        if (!disposed && finish()) setStatus(error instanceof Error ? error.message : 'Segnalazione non disponibile.');
       }
     })();
-    return () => { disposed = true; cancelScroll?.(); };
+    return dispose;
   });
   useEffect(() => {
     if (!linkedReportId) { handledLink.current = undefined; return; }
@@ -598,7 +640,7 @@ export function ReviewOverlay({ site, environment, host, transport, logoUrl, onP
           <div className="flex items-center justify-between gap-4 rounded-xl border bg-muted/50 p-4 dark:bg-card"><div className="space-y-1"><Label htmlFor="reporty-resolved">Mostra risolte</Label><p id="reporty-resolved-help" className="text-xs text-muted-foreground">Include i pin delle segnalazioni chiuse sulla pagina. Non modifica i filtri della lista.</p></div><Switch id="reporty-resolved" checked={showResolved && !hideReporty} onCheckedChange={setShowResolved} disabled={hideReporty || !pinsVisible} aria-describedby="reporty-resolved-help" /></div>
           <div className="flex items-center justify-between gap-4 rounded-xl border bg-muted/50 p-4 dark:bg-card"><div className="space-y-1"><h3 className="text-sm font-medium">Tema</h3><p className="text-xs text-muted-foreground">Scegli la modalità chiara o scura per Reporty.</p></div><ThemeSwitch host={host} /></div>
         </section> : selected ? <div className="space-y-4">
-        <section className="space-y-4" aria-label="Segnalazione"><div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-2 text-xs sm:flex-wrap"><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${reviewStatusColors[selected.status]}`}><ReportIcon value={selected.status} />{statusLabels[selected.status]}</span><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${priorityColors[selected.priority ?? 'medium']}`}><ReportIcon value={selected.priority ?? 'medium'} />Priorità {priorityLabels[selected.priority ?? 'medium'].toLowerCase()}</span></div><div className="flex items-center gap-2">{selected.screenshot_path ? <TooltipButton label="Mostra screenshot" disabled={busy || imageLoading} onClick={() => { setImageUrls([]); setGalleryOpen(true); void run(async () => { try { const result = await loadScreenshot(selected.id); setImageUrls(result.urls ?? [result.url]); } catch (error) { setGalleryOpen(false); throw error; } }); }}><Eye className="size-4" aria-hidden="true" /></TooltipButton> : null}<TooltipButton label="Vai alla segnalazione" disabled={busy} onClick={() => {
+        <section className="space-y-4" aria-label="Segnalazione"><div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-2 text-xs sm:flex-wrap"><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${reviewStatusColors[selected.status]}`}><ReportIcon value={selected.status} />{statusLabels[selected.status]}</span><span className={`inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklab,currentColor_25%,transparent)] px-2 py-1 ${priorityColors[selected.priority ?? 'medium']}`}><ReportIcon value={selected.priority ?? 'medium'} />Priorità {priorityLabels[selected.priority ?? 'medium'].toLowerCase()}</span></div><div className="flex items-center gap-2">{dashboardOrigin ? <TooltipButton type="button" label="Copia link" onClick={event => void copyReportLink(selected, event.currentTarget)}><Share2 className="size-4" aria-hidden="true" /></TooltipButton> : null}{selected.screenshot_path ? <TooltipButton label="Mostra screenshot" disabled={busy || imageLoading} onClick={() => { setImageUrls([]); setGalleryOpen(true); void run(async () => { try { const result = await loadScreenshot(selected.id); setImageUrls(result.urls ?? [result.url]); } catch (error) { setGalleryOpen(false); throw error; } }); }}><Eye className="size-4" aria-hidden="true" /></TooltipButton> : null}<TooltipButton label="Vai alla segnalazione" disabled={busy} onClick={() => {
           if (selected.page_path !== page.pagePath) { const url = new URL(selected.context.url); url.searchParams.set('__reporty_issue', selected.id); location.assign(url.href); return; }
           setModalOpen(false);
           setHighlighted(null);

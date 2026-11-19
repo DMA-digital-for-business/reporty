@@ -13,3 +13,7 @@ export function getPageContext(input: string) {
     : `${url.pathname}#${route.split('?')[0]}`;
   return { origin: url.origin, pagePath, url: url.href };
 }
+
+export function reportDashboardPath(projectId: string, reportId: string): string {
+  return `/dashboard/projects/${projectId}?report=${reportId}`;
+}

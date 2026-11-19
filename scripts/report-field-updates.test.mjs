@@ -167,27 +167,24 @@ test('the handler reports a failed save and does not refresh a page visited in t
 });
 
 const refreshSource = stripTypeScriptTypes(overlay.slice(overlay.indexOf('  async function refresh('), overlay.indexOf('  async function run(')));
-const refresh = new Function('{ hideReporty, isPageActive, reports, pinsRevision, notificationScope, fieldUpdates, setPinsLoading, listFeed, message, page, setReports }', refreshSource + '\nreturn refresh;');
+const refresh = new Function('{ hideReporty, isPageActive, reports, pinsRevision, notificationScope, fieldUpdates, listFeed, message, page, setReports }', refreshSource + '\nreturn refresh;');
 
 test('background reconciliation polls the list and pins without enabling skeletons', async () => {
-  const updates = createReportFieldUpdates(), response = deferred(), loading = [], pins = [];
+  const updates = createReportFieldUpdates(), response = deferred(), pins = [];
   let polls = 0, reloads = 0;
   const reconcile = refresh({
     hideReporty: false, isPageActive: () => true, reports: [report], pinsRevision: { current: 0 },
     notificationScope: { current: 'env:/' }, fieldUpdates: updates,
-    setPinsLoading: value => loading.push(value),
     listFeed: { poll: async () => { polls++; }, refresh: () => { reloads++; } },
     message: () => response.promise, page: { pagePath: '/' }, setReports: value => pins.push(value),
   });
   const pending = reconcile(true);
   assert.equal(polls, 1);
   assert.equal(reloads, 0);
-  assert.deepEqual(loading, []);
   await updates.update(report, 'status', 'validation', async () => {}, () => {});
   response.resolve({ data: [report] });
   await pending;
   assert.equal(pins[0][0].status, 'validation');
-  assert.deepEqual(loading, [false]);
 });
 
 test('a failed pin refresh still waits for the list so the next reconciliation can poll again', async () => {
@@ -196,7 +193,7 @@ test('a failed pin refresh still waits for the list so the next reconciliation c
   const reconcile = refresh({
     hideReporty: false, isPageActive: () => true, reports: [report], pinsRevision: { current: 0 },
     notificationScope: { current: 'env:/' }, fieldUpdates: createReportFieldUpdates(),
-    setPinsLoading: () => {}, listFeed: { poll: () => listing.promise },
+    listFeed: { poll: () => listing.promise },
     message: async () => { throw new Error('offline'); }, page: { pagePath: '/' }, setReports: () => {},
   });
   const pending = assert.rejects(reconcile(true), /offline/).then(() => { finished = true; });

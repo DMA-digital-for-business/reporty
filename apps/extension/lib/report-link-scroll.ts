@@ -1,10 +1,26 @@
 type Point = { x: number; y: number };
 
-/** Wait for the site's initial scroll and layout, while allowing lazy content to load. */
+const scrollKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+
+export function onManualReportScroll(cancel: () => void, view: Window = window) {
+  const onKey = (event: KeyboardEvent) => {
+    if (scrollKeys.has(event.key)) cancel();
+  };
+  view.addEventListener('wheel', cancel, { capture: true, passive: true });
+  view.addEventListener('touchmove', cancel, { capture: true, passive: true });
+  view.addEventListener('keydown', onKey, true);
+  return () => {
+    view.removeEventListener('wheel', cancel, true);
+    view.removeEventListener('touchmove', cancel, true);
+    view.removeEventListener('keydown', onKey, true);
+  };
+}
+
+/** Wait for the site's initial scroll and layout, then move the viewport once. */
 export function scrollToLinkedReport(
   locate: () => Point | null,
   savedScroll: Point | undefined,
-  onComplete: () => void,
+  onReady: () => boolean,
   view: Window = window,
 ) {
   let previous: { documentY: number; scrollY: number } | undefined;
@@ -17,22 +33,22 @@ export function scrollToLinkedReport(
     const scrollY = view.scrollY;
     if (point) {
       const documentY = point.y + scrollY;
-      // The host page can change the scroll position even when the target hasn't moved.
       stable = view.document.readyState === 'complete' && previous &&
         Math.abs(previous.documentY - documentY) < 2 && Math.abs(previous.scrollY - scrollY) < 2
         ? stable + 1 : 0;
       previous = { documentY, scrollY };
-      const distance = point.y - view.innerHeight / 2;
-      if (Math.abs(distance) >= 2) view.scrollBy({ top: distance, behavior: 'instant' });
     } else {
       previous = undefined;
       stable = 0;
-      if (savedScroll && (scrollY !== savedScroll.y || view.scrollX !== savedScroll.x)) {
-        view.scrollTo({ top: savedScroll.y, left: savedScroll.x, behavior: 'instant' });
-      }
     }
     if (stable >= 3 || ++attempts >= 40) {
-      onComplete();
+      if (!onReady()) return;
+      if (point) {
+        const distance = point.y - view.innerHeight / 2;
+        if (Math.abs(distance) >= 2) view.scrollBy({ top: distance, behavior: 'instant' });
+      } else if (savedScroll) {
+        view.scrollTo({ top: savedScroll.y, left: savedScroll.x, behavior: 'instant' });
+      }
       return;
     }
     timer = view.setTimeout(move, 250);
