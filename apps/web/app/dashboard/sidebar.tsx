@@ -12,7 +12,7 @@ import { ThemeSwitch } from '@/components/theme-switch';
 const sidebarToggleClassName = 'border-sidebar-foreground/25 bg-background text-sidebar-foreground aria-expanded:bg-background dark:border-sidebar-foreground/25 dark:bg-background hover:bg-sidebar-accent aria-expanded:hover:bg-sidebar-accent dark:hover:bg-sidebar-accent';
 
 function HeaderActions() {
-  return <div className="ml-auto flex shrink-0 items-center gap-3">
+  return <div className="ml-auto flex shrink-0 items-center gap-2">
     <Button variant="outline" size="icon" nativeButton={false} render={<Link href="/dashboard/audit" prefetch={false} />} aria-label="Apri audit Supabase" title="Audit Supabase"><Activity className="size-4" aria-hidden="true" /></Button>
     <ThemeSwitch />
     <Notifications />
@@ -45,7 +45,7 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
       <div className={`h-full min-h-0 w-[248px] rounded-br-xl border-r transition-transform duration-250 ease-in-out motion-reduce:transition-none ${collapsed ? '-translate-x-full' : 'translate-x-0'}`}>{mobile ? null : children}</div>
     </aside>
     <Dialog.Root open={mobile && open} onOpenChange={setOpen}>
-      <header className="flex shrink-0 items-center gap-3 rounded-br-xl border-b bg-sidebar px-5 py-3 text-sidebar-foreground md:hidden">
+      <header className="flex shrink-0 items-center gap-3 rounded-br-xl border-b bg-sidebar px-4 py-3 text-sidebar-foreground sm:px-5 md:hidden">
         <Dialog.Trigger render={<Button variant="outline" size="icon" className={sidebarToggleClassName} aria-label="Apri menu di navigazione" />}><Menu aria-hidden="true" /></Dialog.Trigger>
         <div className="min-w-0 overflow-hidden"><BrandLogo /></div>
         {mobile ? <HeaderActions /> : null}
@@ -64,7 +64,7 @@ export function DashboardSidebar({ children, content }: { children: React.ReactN
       </Dialog.Portal> : null}
     </Dialog.Root>
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
-      <div className="hidden shrink-0 items-center gap-3 rounded-br-xl border-b bg-sidebar px-5 py-3 text-sidebar-foreground md:flex">
+      <div className="hidden shrink-0 items-center gap-3 rounded-br-xl border-b bg-sidebar px-5 py-3 text-sidebar-foreground md:flex lg:px-6">
         <Button
           variant="outline"
           size="icon"

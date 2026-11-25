@@ -1,3 +1,4 @@
+import { DashboardPage } from '@/components/dashboard-page';
 import { requireUser } from '@/lib/auth';
 import { Feedback } from './feedback';
 import { ProjectList } from './project-list';
@@ -13,13 +14,12 @@ export default async function Dashboard({ searchParams }: {
   if (projectsResult.error) throw new Error('Impossibile caricare i progetti');
   const projects = (projectsResult.data ?? []).map(project => ({ ...project, openReportCount: project.open_reports[0]?.count ?? 0 }));
   return (
-    <main className="w-full space-y-8 px-5 pt-6 pb-10">
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight">Tutti i progetti</h1></div>
-        <p className="text-muted-foreground">Gestisci tutti i siti, gli ambienti e le segnalazioni insieme agli altri sviluppatori.</p>
+    <DashboardPage>
+      <header className="space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight">Tutti i progetti</h1>
       </header>
       <Feedback message={message} />
       <ProjectList projects={projects} />
-    </main>
+    </DashboardPage>
   );
 }

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { DashboardBackLink, DashboardPage } from '@/components/dashboard-page';
 import { Database, HardDrive, Folder, Activity, ExternalLink } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { getSupabaseAudit } from '@/lib/supabase/audit';
@@ -25,12 +25,14 @@ function Usage({ used, limit }: { used: number | null; limit: number }) {
 export default async function AuditPage() {
   await requireUser();
   const audit = await getSupabaseAudit();
-  return <main className="w-full space-y-8 px-5 pt-6 pb-10">
-    <Link href="/dashboard" className={buttonVariants({ variant: 'ghost' })}>← Tutti i progetti</Link>
-    <header className="flex flex-wrap items-center justify-between gap-3"><div className="space-y-2"><h1 className="text-3xl font-semibold tracking-tight">Audit Supabase</h1><p className="text-muted-foreground">Utilizzo del progetto · Piano Free</p></div><RefreshAudit /></header>
+  return <DashboardPage>
+    <header className="space-y-2">
+      <DashboardBackLink />
+      <div className="flex flex-wrap items-center justify-between gap-3"><div className="space-y-2"><h1 className="text-3xl font-semibold tracking-tight">Audit Supabase</h1><p className="text-muted-foreground">Utilizzo del progetto · Piano Free</p></div><RefreshAudit /></div>
+    </header>
     {!audit.configured ? <Card><CardHeader><CardTitle>Configura le metriche</CardTitle></CardHeader><CardContent>Imposta SUPABASE_ACCESS_TOKEN sul server e ripeti il deploy. Per un dominio Supabase personalizzato, imposta anche SUPABASE_PROJECT_REF.</CardContent></Card> : <>
       <p className="text-xs text-muted-foreground">Rilevazione: {date(audit.fetchedAt)}. Le metriche API possono arrivare in ritardo.</p>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><Database className="size-4" />Database</CardTitle><CardDescription>Dati e indici di tutti i database del cluster; WAL escluso.</CardDescription></CardHeader><CardContent className="space-y-3"><Usage used={audit.database.data?.bytes ?? null} limit={FREE_DATABASE_BYTES} />{audit.database.error ? <><p className="text-xs text-muted-foreground">{audit.database.error}</p><FeedbackToast message={audit.database.error} /></> : null}</CardContent></Card>
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><HardDrive className="size-4" />File Storage</CardTitle><CardDescription>Spazio attuale di tutti i bucket del progetto.</CardDescription></CardHeader><CardContent className="space-y-3"><Usage used={audit.storage.data?.bytes ?? null} limit={FREE_STORAGE_BYTES} />{audit.storage.error ? <><p className="text-xs text-muted-foreground">{audit.storage.error}</p><FeedbackToast message={audit.storage.error} /></> : null}<p className="text-xs text-muted-foreground">Confronto indicativo: la quota Storage è condivisa dall’organizzazione e l’utilizzo ufficiale è una media sul periodo di fatturazione.</p></CardContent></Card>
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><Folder className="size-4" aria-hidden="true" />Bucket Storage</CardTitle><CardDescription>Spazio e file di ogni bucket, inclusi nel totale File Storage.</CardDescription></CardHeader><CardContent>
@@ -41,5 +43,5 @@ export default async function AuditPage() {
       <Card><CardHeader><CardTitle>Utilizzo ufficiale e traffico</CardTitle><CardDescription>Le chiamate illimitate non rendono illimitato il traffico: Free include 5 GB di egress e 5 GB di cached egress. Per quota condivisa, medie del periodo e restrizioni consulta Supabase.</CardDescription></CardHeader><CardContent><a className={buttonVariants({ variant: 'outline' })} href={`https://supabase.com/dashboard/project/${audit.ref}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="size-4" />Apri Supabase</a></CardContent></Card>
     </>}
     <p className="text-xs text-muted-foreground">Soglie Free verificate il 12 ottobre 2026. <a className="underline" href="https://supabase.com/pricing" target="_blank" rel="noopener noreferrer">Limiti ufficiali</a></p>
-  </main>;
+  </DashboardPage>;
 }

@@ -319,7 +319,7 @@ export function ReportList({ projectId, initialView, environments, participants,
       });
     } finally { deleteLock.current = false; }
   }
-  return <section className="space-y-5" aria-label="Segnalazioni">
+  return <section className="space-y-4" aria-label="Segnalazioni">
     <div className="flex items-center gap-3">
       <CreateReport environments={environments} disabled={busy || moving || Boolean(bulkProgress)} onCreated={() => { void feed.poll(); router.refresh(); window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)); }} />
       <div className="min-w-0 flex-1"><Input disabled={Boolean(bulkProgress)} aria-label="Cerca segnalazioni" className="h-10 w-full" placeholder="Cerca commento o pagina…" value={searchInput} onChange={event => setSearch(event.target.value)} /></div>

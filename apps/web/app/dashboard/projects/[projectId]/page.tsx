@@ -4,7 +4,7 @@ import { McpSettings, McpSettingsSkeleton } from '../../mcp-settings';
 import { AccordionSection } from '@/components/ui/accordion';
 import { Plus, Save } from 'lucide-react';
 import { EnvironmentWidget } from '../../environment-widget';
-import Link from 'next/link';
+import { DashboardBackLink, DashboardPage } from '@/components/dashboard-page';
 import { notFound } from 'next/navigation';
 import { isUuid, type ProjectParticipant } from '@reporty/shared';
 import { requireUser } from '@/lib/auth';
@@ -53,11 +53,13 @@ export default async function Project({ params, searchParams }: {
     ...participants.filter(person => person.kind === 'guest'),
   ];
   return (
-    <main className="w-full space-y-4 px-5 pt-6 pb-10">
-      <Link href="/dashboard" className={buttonVariants({ variant: 'ghost' })}>← Tutti i progetti</Link>
-      <header className="flex flex-wrap items-center gap-3 md:sr-only">
-        <h1 className="text-3xl font-semibold tracking-tight">{project.name}</h1>
-        <Badge variant="secondary" className="md:hidden">Sviluppatore</Badge>
+    <DashboardPage>
+      <header className="flex flex-col gap-2">
+        <DashboardBackLink />
+        <div className="flex flex-wrap items-center gap-2 md:sr-only">
+          <h1 className="min-w-0 text-3xl font-semibold tracking-tight [overflow-wrap:anywhere]">{project.name}</h1>
+          <Badge variant="secondary" className="md:hidden">Sviluppatore</Badge>
+        </div>
       </header>
       <Feedback message={message} />
       <ProjectTabs initialReportCount={project.reports[0]?.count ?? 0} projectName={project.name} playgroundEnvironments={environments.map(environment => { const widget = widgetsResult.data?.find(item => item.environment_id === environment.id); return { ...environment, publicKey: widget?.public_key ?? "", enabled: widget?.enabled === true }; })} key={`${projectId}:${report ?? "project"}:${tab ?? "reports"}:${expandedEnvironment ?? ""}`} initialTab={tab === "environments" || tab === "settings" ? tab : "reports"} reports={<ProjectReports projectId={projectId} initialReportId={report} environments={environments} participants={participants} />} environments={<>
@@ -91,7 +93,7 @@ export default async function Project({ params, searchParams }: {
         <CardHeader><CardTitle>Nome del progetto</CardTitle><CardDescription>Il nome condiviso con tutti gli sviluppatori.</CardDescription></CardHeader>
         <CardContent><form action={renameProject} className="flex flex-wrap items-end gap-3">
           <input type="hidden" name="projectId" value={projectId} />
-          <div className="grid min-w-60 flex-1 gap-2"><Label htmlFor="project-name">Nome</Label><Input id="project-name" name="name" defaultValue={project.name} maxLength={120} required /></div>
+          <div className="grid min-w-0 basis-60 grow gap-2"><Label htmlFor="project-name">Nome</Label><Input id="project-name" name="name" defaultValue={project.name} maxLength={120} required /></div>
           <SubmitButton><Save className="size-4" aria-hidden="true" />Salva nome</SubmitButton>
         </form></CardContent>
       </Card><Suspense fallback={<McpSettingsSkeleton />}><McpSettings projectId={projectId} /></Suspense><AccordionSection variant="card" title="Utenti">
@@ -100,6 +102,6 @@ export default async function Project({ params, searchParams }: {
           {participantsResult.error ? <FeedbackToast message="Impossibile caricare gli utenti. Verifica di aver applicato supabase/report_updates.sql." /> : settingsParticipants.length ? settingsParticipants.map(person => <div key={person.key} className="flex items-center justify-between gap-3 rounded-lg border bg-muted/50 p-3"><span className="min-w-0 break-words text-sm">{person.name}</span><Badge variant="secondary">{person.kind === 'developer' ? 'Sviluppatore' : 'Guest'}</Badge></div>) : <p className="text-sm text-muted-foreground">Nessun partecipante.</p>}
         </div>
       </AccordionSection><section aria-label="Zona pericolosa" className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4"><h3 className="text-sm font-semibold text-destructive">Zona pericolosa</h3><ResourceDelete fullWidth id={projectId} kind="project" name={project.name} /></section></> : null} />
-    </main>
+    </DashboardPage>
   );
 }
